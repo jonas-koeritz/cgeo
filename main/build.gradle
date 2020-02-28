@@ -374,6 +374,17 @@ dependencies {
 
     // Zxing barcode reader integration
     implementation 'com.google.zxing:android-integration:3.3.0'
+
+    // Android Room Persistence
+    def room_version = "2.2.4"
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
+
+    // Android Lifecycle Components (LiveData, ViewModel)
+    def lifecycle_version = "2.2.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-livedata:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-common-java8:$lifecycle_version"
 }
 
 /*

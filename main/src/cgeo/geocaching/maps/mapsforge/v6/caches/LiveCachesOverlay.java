@@ -1,5 +1,6 @@
 package cgeo.geocaching.maps.mapsforge.v6.caches;
 
+import cgeo.geocaching.CgeoApplication;
 import cgeo.geocaching.SearchResult;
 import cgeo.geocaching.connector.ConnectorFactory;
 import cgeo.geocaching.enumerations.LoadFlags;
@@ -8,8 +9,10 @@ import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.maps.MapUtils;
 import cgeo.geocaching.maps.mapsforge.v6.MapHandlers;
 import cgeo.geocaching.models.Geocache;
+import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.storage.DataStore;
 import cgeo.geocaching.utils.Log;
+import cgeo.geocaching.persistence.entities.Geocache.LiveCache;
 
 import androidx.annotation.NonNull;
 
@@ -28,9 +31,11 @@ public class LiveCachesOverlay extends AbstractCachesOverlay {
     private final Disposable timer;
     private boolean downloading = false;
     public long loadThreadRun = -1;
+    private GeocacheRepository geocacheRepository;
 
     public LiveCachesOverlay(final int overlayId, final Set<GeoEntry> geoEntries, final CachesBundle bundle, final Layer anchorLayer, final MapHandlers mapHandlers) {
         super(overlayId, geoEntries, bundle, anchorLayer, mapHandlers);
+        this.geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
 
         this.timer = startTimer();
     }
@@ -97,6 +102,12 @@ public class LiveCachesOverlay extends AbstractCachesOverlay {
             final SearchResult searchResult = ConnectorFactory.searchByViewport(getViewport().resize(1.2));
 
             final Set<Geocache> result = searchResult.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_OR_DB);
+
+            // Persist loaded information
+            for (Geocache g : result) {
+                geocacheRepository.upsert(new LiveCache(g));
+            }
+
             MapUtils.filter(result);
             // update the caches
             // first remove filtered out
@@ -105,6 +116,8 @@ public class LiveCachesOverlay extends AbstractCachesOverlay {
             DataStore.removeCaches(filteredCodes, EnumSet.of(RemoveFlag.CACHE));
 
             Log.d(String.format(Locale.ENGLISH, "Live caches found: %d", result.size()));
+
+
 
             //render
             update(result);

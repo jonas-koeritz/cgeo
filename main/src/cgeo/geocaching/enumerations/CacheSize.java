@@ -101,6 +101,16 @@ public enum CacheSize {
     }
 
     @NonNull
+    public static CacheSize getByNumber(final int number) {
+        for (final CacheSize size : CacheSize.values()) {
+            if (size.comparable == number) {
+                return size;
+            }
+        }
+        return UNKNOWN;
+    }
+
+    @NonNull
     public final String getL10n() {
         return CgeoApplication.getInstance().getBaseContext().getString(stringId);
     }
