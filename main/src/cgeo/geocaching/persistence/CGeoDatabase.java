@@ -3,8 +3,10 @@ package cgeo.geocaching.persistence;
 import android.content.Context;
 
 import cgeo.geocaching.persistence.dao.GeocacheDao;
+import cgeo.geocaching.persistence.dao.ListDao;
+import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.Geocache;
-import cgeo.geocaching.persistence.entities.List;
+import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
 import cgeo.geocaching.persistence.entities.LogEntry;
 import cgeo.geocaching.persistence.entities.Trackable;
 import cgeo.geocaching.persistence.entities.Waypoint;
@@ -17,19 +19,22 @@ import androidx.room.TypeConverters;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+
 @Database(entities = {
         Geocache.class,
         Trackable.class,
         LogEntry.class,
-        List.class,
-        Waypoint.class
+        CacheList.class,
+        Waypoint.class,
+        GeocacheListCrossRef.class,
 },
-        version = 1,
+        version = 2020022811,
         exportSchema = false
 )
 @TypeConverters({cgeo.geocaching.persistence.util.TypeConverters.class})
 public abstract class CGeoDatabase extends RoomDatabase {
     public abstract GeocacheDao geocacheDao();
+    public abstract ListDao listDao();
 
     private static volatile CGeoDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;

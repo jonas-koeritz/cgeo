@@ -8,17 +8,23 @@ import cgeo.geocaching.location.Geopoint;
 import androidx.annotation.NonNull;
 import androidx.room.Embedded;
 import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.PrimaryKey;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 
+import static androidx.room.ForeignKey.CASCADE;
 
-@Entity(tableName = "geocaches", primaryKeys = { "geocacheId", "geocode" })
+
+@Entity(
+        tableName = "geocaches"
+)
 public class Geocache {
-    public long geocacheId;
-
     // The unique geocode used to identify this cache
     @NonNull
+    @PrimaryKey
     public String geocode = "";
 
     // The caches name
@@ -35,6 +41,15 @@ public class Geocache {
 
     // The date this cache has been hidden
     public Date hidden;
+
+    // The last time the basic cache information has been updated
+    public Date liveUpdated;
+
+    // The last time the complete cache data has been updated
+    public Date updated;
+
+    // The last time the user viewed this caches details page (can be used for history)
+    public Date lastViewed;
 
     // A hint given by the cache owner
     public String hint;
@@ -87,16 +102,21 @@ public class Geocache {
     // Does the cache require a password to submit a new log?
     public Boolean logPasswordRequired;
 
+    // TODO Strings seem to be a clunky solution for this, create a Class to hold type and status
     // All the attributes assigned to this cache
-    public Set<CacheAttribute> attributes;
+    public Set<String> attributes;
+
+    // Has this cache been marked for offline usage?
+    public Boolean offline;
+
+    // Have all available details been downloaded yet?
+    public Boolean detailed;
 
     /**
-     * LiveCache is used to update the subset of information gathered during LiveMap
-     * usage.
+     * LiveCache is used to update the subset of information gathered
+     * during live map usage.
      */
     public static class LiveCache {
-        public long geocacheId;
-
         @NonNull
         public String geocode = "";
         public String name;
@@ -107,7 +127,10 @@ public class Geocache {
         public boolean disabled;
         public boolean archived;
         public boolean premiumMembersOnly;
+        public Date liveUpdated;
 
+        // TODO evaluate if more cache data can be updated from the live map
+        // Create a new LiveCache object using the data from a legacy geocache object
         public LiveCache(final cgeo.geocaching.models.Geocache cache) {
             this.geocode = cache.getGeocode();
             this.name = cache.getName();
@@ -119,5 +142,40 @@ public class Geocache {
             this.archived = cache.isArchived();
             this.premiumMembersOnly = cache.isPremiumMembersOnly();
         }
+    }
+
+    public Geocache() {
+
+    }
+
+    /**
+     * Creates a Geocache Entity based on the given legacy cache object
+     * @param cache legacy cache object to copy
+     */
+    public Geocache(final cgeo.geocaching.models.Geocache cache) {
+        this.geocode = cache.getGeocode();
+        this.name = cache.getName();
+        this.owner = new User(cache.getOwnerUserId(), cache.getOwnerDisplayName());
+        this.difficulty = (double) cache.getDifficulty();
+        this.terrain = (double) cache.getTerrain();
+        this.hidden = cache.getHiddenDate();
+        this.liveUpdated = new Date(cache.getUpdated());
+        this.updated = new Date(cache.getUpdated());
+        this.hint = cache.getHint();
+        this.cacheType = cache.getType();
+        this.size = cache.getSize();
+        this.latitude = cache.getCoords().getLatitude();
+        this.longitude = cache.getCoords().getLongitude();
+        this.region = cache.getLocation();
+        this.personalNote = cache.getPersonalNote();
+        this.description = cache.getDescription();
+        this.disabled = cache.isDisabled();
+        this.archived = cache.isArchived();
+        this.premiumMembersOnly = cache.isPremiumMembersOnly();
+        this.userModifiedCoordinates = cache.hasUserModifiedCoords();
+        this.logPasswordRequired = cache.isLogPasswordRequired();
+        this.attributes = new HashSet<>(cache.getAttributes());
+        this.offline = cache.isOffline();
+        this.detailed = cache.isDetailed();
     }
 }

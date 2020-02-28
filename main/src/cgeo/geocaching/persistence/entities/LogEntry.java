@@ -10,7 +10,7 @@ import java.util.Date;
 @Entity(tableName = "logEntries", primaryKeys = { "logId" })
 public class LogEntry {
     public long logId;
-    public long geocacheId;
+    public String geocache;
 
     public LogType logType;
 

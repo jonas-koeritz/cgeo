@@ -6,6 +6,8 @@ import cgeo.geocaching.compatibility.Compatibility;
 import cgeo.geocaching.list.StoredList;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.network.Network;
+import cgeo.geocaching.persistence.CGeoDatabase;
+import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.speech.SpeechService;
 import cgeo.geocaching.storage.DataStore;
@@ -225,6 +227,11 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
                         CacheDetailActivity.updateCacheLists(view, cache, res);
                     }
                 });
+            }
+
+            final GeocacheRepository geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
+            for (Integer listId : listIds) {
+                geocacheRepository.addGeocacheToList(cache.getGeocode(), listId);
             }
         }
     }

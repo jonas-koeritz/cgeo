@@ -117,8 +117,6 @@ public class LiveCachesOverlay extends AbstractCachesOverlay {
 
             Log.d(String.format(Locale.ENGLISH, "Live caches found: %d", result.size()));
 
-
-
             //render
             update(result);
 

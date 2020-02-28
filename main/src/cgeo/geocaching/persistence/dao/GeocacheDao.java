@@ -1,6 +1,10 @@
 package cgeo.geocaching.persistence.dao;
 
+import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.Geocache;
+import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
+import cgeo.geocaching.persistence.entities.Waypoint;
+import cgeo.geocaching.utils.Log;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -8,6 +12,8 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Transaction;
 import androidx.room.Update;
+
+import java.util.Date;
 
 @Dao
 public abstract class GeocacheDao {
@@ -17,11 +23,22 @@ public abstract class GeocacheDao {
     @Update(onConflict = OnConflictStrategy.IGNORE)
     abstract void update(Geocache entity);
 
+    @Query("UPDATE geocaches SET lastViewed = :lastViewed WHERE geocode = :geocode")
+    public abstract void setLastViewed(String geocode, Date lastViewed);
+
     @Transaction
     public void upsert(final Geocache geocache) {
+        if (geocache.updated == null) {
+            geocache.updated = new Date();
+        }
+        if (geocache.liveUpdated == null) {
+            geocache.liveUpdated = new Date();
+        }
+
         final long id = insert(geocache);
         if (id == -1) { // Already existed
             update(geocache);
+            Log.d(String.format("GeocacheDao\tUpdated Geocache %s", geocache.geocode));
         }
     }
 
@@ -33,12 +50,41 @@ public abstract class GeocacheDao {
 
     @Transaction
     public void upsert(final Geocache.LiveCache geocache) {
+        if (geocache.liveUpdated == null) {
+            geocache.liveUpdated = new Date();
+        }
+
         final long id = insert(geocache);
         if (id == -1) { // Already existed
             update(geocache);
+            Log.d(String.format("GeocacheDao\tUpdated Geocache %s", geocache.geocode));
+        }
+    }
+
+    @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
+    public abstract Geocache getGeoacheByGeocode(String geocode);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract long insert(Waypoint waypoint);
+
+    @Update(onConflict = OnConflictStrategy.IGNORE)
+    abstract void update(Waypoint waypoint);
+
+    @Transaction
+    public void upsert(final Waypoint waypoint) {
+        final long id = insert(waypoint);
+        if (id == -1) { // Already existed
+            update(waypoint);
+            Log.d(String.format("GeocacheDao\tUpdated Waypoint %s@%s", waypoint.name, waypoint.geocache));
         }
     }
 
     @Query("DELETE FROM geocaches")
     abstract void deleteAll();
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    public abstract long createList(CacheList list);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    public abstract void insertGeocacheListCrossRef(GeocacheListCrossRef crossRef);
 }

@@ -29,6 +29,8 @@ import cgeo.geocaching.models.Image;
 import cgeo.geocaching.models.Trackable;
 import cgeo.geocaching.models.Waypoint;
 import cgeo.geocaching.network.HtmlImage;
+import cgeo.geocaching.persistence.repositories.GeocacheRepository;
+import cgeo.geocaching.persistence.repositories.ListRepository;
 import cgeo.geocaching.search.SearchSuggestionCursor;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.ui.dialog.Dialogs;
@@ -351,6 +353,7 @@ public class DataStore {
             + "); ";
 
     private static final String SEQUENCE_INTERNAL_CACHE = "seq_internal_cache";
+
 
     private DataStore() {
         // utility class
@@ -3084,6 +3087,7 @@ public class DataStore {
         }
 
         init();
+        final ListRepository listRepository = new ListRepository(CgeoApplication.getInstance());
 
         database.beginTransaction();
         try {
@@ -3093,6 +3097,7 @@ public class DataStore {
             values.put("marker", 0);
 
             id = (int) database.insert(dbTableLists, null, values);
+            listRepository.createList(id + customListIdOffset, name);
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();
@@ -3143,6 +3148,8 @@ public class DataStore {
 
         init();
 
+        final ListRepository listRepository = new ListRepository(CgeoApplication.getInstance());
+
         database.beginTransaction();
         boolean status = false;
         try {
@@ -3160,6 +3167,8 @@ public class DataStore {
 
                 status = true;
             }
+
+            listRepository.deleteList(listId);
 
             database.setTransactionSuccessful();
         } finally {
@@ -3258,6 +3267,12 @@ public class DataStore {
         if (caches.isEmpty()) {
             return;
         }
+
+        final GeocacheRepository geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
+        for (Geocache c : caches) {
+            geocacheRepository.addGeocacheToList(c.getGeocode(), listId);
+        }
+
         final AbstractList list = AbstractList.getListById(listId);
         if (list == null) {
             return;
@@ -3290,6 +3305,8 @@ public class DataStore {
         }
         init();
 
+        final GeocacheRepository geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
+
         final SQLiteStatement add = PreparedStatement.ADD_TO_LIST.getStatement();
         final SQLiteStatement remove = PreparedStatement.REMOVE_FROM_ALL_LISTS.getStatement();
 
@@ -3313,6 +3330,7 @@ public class DataStore {
                     add.execute();
 
                     cache.getLists().add(listId);
+                    geocacheRepository.addGeocacheToList(cache.getGeocode(), listId);
                 }
             }
             database.setTransactionSuccessful();

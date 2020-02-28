@@ -1,17 +1,19 @@
 package cgeo.geocaching.persistence.entities;
 
+import androidx.annotation.NonNull;
 import androidx.room.Embedded;
 import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 
 import java.util.Date;
 
 import cgeo.geocaching.connector.trackable.TrackableBrand;
 
-@Entity(tableName = "trackables", primaryKeys = { "trackableId" })
+@Entity(tableName = "trackables")
 public class Trackable {
-    public long trackableId;
-
     // The geocode of this trackable
+    @NonNull
+    @PrimaryKey
     public String geocode;
 
     // The name of this trackable

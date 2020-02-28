@@ -47,6 +47,7 @@ import cgeo.geocaching.network.SmileyImage;
 import cgeo.geocaching.permission.PermissionHandler;
 import cgeo.geocaching.permission.PermissionRequestContext;
 import cgeo.geocaching.permission.RestartLocationPermissionGrantedCallback;
+import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.sensors.GeoData;
 import cgeo.geocaching.sensors.GeoDirHandler;
 import cgeo.geocaching.sensors.Sensors;
@@ -146,6 +147,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
@@ -223,9 +225,13 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
 
     private final EnumSet<TrackableBrand> processedBrands = EnumSet.noneOf(TrackableBrand.class);
 
+    private GeocacheRepository geocacheRepository;
+
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState, R.layout.cachedetail_activity);
+
+        geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
 
         // get parameters
         final Bundle extras = getIntent().getExtras();
@@ -887,6 +893,11 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
             return;
         }
 
+        // Persist this cache
+        geocacheRepository.upsert(cache);
+        geocacheRepository.logView(cache.getGeocode());
+
+
         // allow cache to notify CacheDetailActivity when it changes so it can be reloaded
         cache.setChangeNotificationHandler(new ChangeNotificationHandler(this, progress));
 
@@ -1116,6 +1127,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                             cachename.setText(editText.getText().toString());
                             cache.setName(editText.getText().toString());
                             DataStore.saveCache(cache, LoadFlags.SAVE_ALL);
+                            geocacheRepository.upsert(cache);
                             Toast.makeText(context, R.string.cache_name_updated, Toast.LENGTH_SHORT).show();
                         })
                         .setNegativeButton(android.R.string.cancel, (dialog, whichButton) -> { })
@@ -1765,6 +1777,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                     return null;
                 }
             }.execute();
+            geocacheRepository.upsert(cache);
             notifyDataSetChanged();
         }
     }
@@ -2453,6 +2466,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
         }
 
         Schedulers.io().scheduleDirect(() -> DataStore.saveCache(cache, EnumSet.of(SaveFlag.DB)));
+        geocacheRepository.upsert(cache);
     }
 
     private static void setPersonalNote(final TextView personalNoteView, final String personalNote) {

@@ -11,6 +11,7 @@ import cgeo.geocaching.log.ReportProblemType;
 import androidx.room.TypeConverter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -51,34 +52,30 @@ public class TypeConverters {
     // TODO Maybe serializing the full rawNames to String isn't the best option
 
     @TypeConverter
-    public static String attributesToString(final Set<CacheAttribute> attributes) {
-        if (attributes == null) {
+    public static String stringSetToString(final Set<String> strings) {
+        if (strings == null) {
             return null;
         }
         final StringBuilder resultBuilder = new StringBuilder();
-        for (CacheAttribute a : attributes) {
-            resultBuilder.append(a.rawName);
+        for (String s : strings) {
+            resultBuilder.append(s);
             resultBuilder.append(",");
         }
 
         // Cut off the last delimiter
         if (resultBuilder.length() > 0) {
-            return resultBuilder.substring(0, resultBuilder.length() - 2);
+            return resultBuilder.substring(0, resultBuilder.length() - 1);
         }
         return null;
     }
 
     @TypeConverter
-    public static Set<CacheAttribute> attributesFromString(final String value) {
+    public static Set<String> stringSetFromString(final String value) {
         if (value == null) {
             return null;
         }
-        final String[] attributeRawNames = value.split(",");
-        final Set<CacheAttribute> result = new HashSet<>();
-        for (String rawName : attributeRawNames) {
-            result.add(CacheAttribute.getByRawName(rawName));
-        }
-        return result;
+        final String[] strings = value.split(",");
+        return new HashSet<>(Arrays.asList(strings));
     }
 
     @TypeConverter

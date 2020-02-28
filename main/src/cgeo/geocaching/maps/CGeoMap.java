@@ -2,6 +2,7 @@ package cgeo.geocaching.maps;
 
 import cgeo.geocaching.CacheListActivity;
 import cgeo.geocaching.CachePopup;
+import cgeo.geocaching.CgeoApplication;
 import cgeo.geocaching.CompassActivity;
 import cgeo.geocaching.R;
 import cgeo.geocaching.SearchResult;
@@ -42,6 +43,7 @@ import cgeo.geocaching.network.AndroidBeam;
 import cgeo.geocaching.permission.PermissionHandler;
 import cgeo.geocaching.permission.PermissionRequestContext;
 import cgeo.geocaching.permission.RestartLocationPermissionGrantedCallback;
+import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.sensors.GeoData;
 import cgeo.geocaching.sensors.GeoDirHandler;
 import cgeo.geocaching.sensors.Sensors;
@@ -55,6 +57,7 @@ import cgeo.geocaching.utils.Formatter;
 import cgeo.geocaching.utils.LeastRecentlyUsedSet;
 import cgeo.geocaching.utils.Log;
 import cgeo.geocaching.utils.MapMarkerUtils;
+import cgeo.geocaching.persistence.entities.Geocache.LiveCache;
 
 import android.app.ActionBar;
 import android.app.Activity;
@@ -197,6 +200,9 @@ public class CGeoMap extends AbstractMap implements ViewFactory, OnCacheTapListe
     private static final BlockingQueue<Runnable> loadQueue = new ArrayBlockingQueue<>(1);
     private static final ThreadPoolExecutor loadExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, loadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
     private MapOptions mapOptions;
+
+    private GeocacheRepository geocacheRepository;
+
     // handlers
 
     /**
@@ -399,6 +405,7 @@ public class CGeoMap extends AbstractMap implements ViewFactory, OnCacheTapListe
 
     public CGeoMap(final MapActivityImpl activity) {
         super(activity);
+        geocacheRepository = new GeocacheRepository(CgeoApplication.getInstance());
     }
 
     protected void countVisibleCaches() {
@@ -1369,6 +1376,12 @@ public class CGeoMap extends AbstractMap implements ViewFactory, OnCacheTapListe
             downloaded = true;
 
             final Set<Geocache> result = searchResult.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_OR_DB);
+
+            // Persist loaded information
+            for (Geocache g : result) {
+                geocacheRepository.upsert(new LiveCache(g));
+            }
+
             MapUtils.filter(result);
             // update the caches
             // first remove filtered out
