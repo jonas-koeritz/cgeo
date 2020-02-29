@@ -9,6 +9,7 @@ import androidx.room.Index;
 import static androidx.room.ForeignKey.CASCADE;
 
 @Entity(
+        tableName = "cache_list",
         primaryKeys = { "listId", "geocode" },
         indices = {
                 @Index(value = "listId"),

@@ -10,7 +10,6 @@ import cgeo.geocaching.persistence.CGeoDatabase;
 import cgeo.geocaching.persistence.dao.ListDao;
 import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.ListWithGeocaches;
-import cgeo.geocaching.utils.Log;
 
 public class ListRepository {
     private ListDao listDao;
@@ -27,7 +26,6 @@ public class ListRepository {
     }
 
     public void createList(final long listId, final String name) {
-        Log.d(String.format("ListRepository\tcreating new List: %d:%s", listId, name));
         CGeoDatabase.databaseWriteExecutor.execute(() -> {
             listDao.createList(new CacheList(listId, name, new Date()));
         });

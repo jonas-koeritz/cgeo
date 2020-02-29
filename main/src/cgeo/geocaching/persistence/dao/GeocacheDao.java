@@ -6,6 +6,7 @@ import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
 import cgeo.geocaching.persistence.entities.Waypoint;
 import cgeo.geocaching.utils.Log;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -14,6 +15,8 @@ import androidx.room.Transaction;
 import androidx.room.Update;
 
 import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
 @Dao
 public abstract class GeocacheDao {
@@ -87,4 +90,16 @@ public abstract class GeocacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     public abstract void insertGeocacheListCrossRef(GeocacheListCrossRef crossRef);
+
+    @Query("SELECT * FROM geocaches WHERE latitude >= :minLat AND latitude <= :maxLat AND longitude >= :minLon AND longitude <= :maxLon LIMIT 500")
+    public abstract LiveData<List<Geocache>> getGeocachesInRectangle(double minLat, double minLon, double maxLat, double maxLon);
+
+    @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
+    public abstract LiveData<Geocache> getGeocacheByGeocode(String geocode);
+
+    @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND ((NOT :activeCachesOnly) OR (disabled = 0)) AND (archived = 0) AND NOT (:excludeOwnedCaches AND userIsOwner) AND NOT (:excludeFoundCaches AND found)")
+    public abstract LiveData<List<Geocache>> getGeocachesInRectangle(double minLat, double minLon, double maxLat, double maxLon, boolean activeCachesOnly, boolean excludeOwnedCaches, boolean excludeFoundCaches);
+
+    @Query("SELECT * FROM geocaches WHERE geocode IN (:geocodes)")
+    public abstract LiveData<List<Geocache>> getCachesByGeocode(Set<String> geocodes);
 }

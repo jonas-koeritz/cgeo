@@ -28,6 +28,7 @@ import cgeo.geocaching.connector.trackable.TrackableConnector;
 import cgeo.geocaching.connector.trackable.TrackableTrackingCode;
 import cgeo.geocaching.connector.trackable.TravelBugConnector;
 import cgeo.geocaching.connector.trackable.UnknownTrackableConnector;
+import cgeo.geocaching.enumerations.LoadFlags;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.models.Trackable;
@@ -41,7 +42,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
@@ -335,6 +339,22 @@ public final class ConnectorFactory {
     @NonNull
     public static SearchResult searchByViewport(@NonNull final Viewport viewport) {
         return SearchResult.parallelCombineActive(searchByViewPortConns, connector -> connector.searchByViewport(viewport));
+    }
+
+    /**
+     * Search for geocaches to display on a live map inside the given viewport
+     * @param viewport the area to search for geocaches
+     * @return unordered Set of LiveCache entities
+     */
+    @NonNull
+    public static Set<cgeo.geocaching.persistence.entities.Geocache.LiveCache> liveSearchByViewport(@NonNull final Viewport viewport) {
+        final SearchResult searchResult = SearchResult.parallelCombineActive(searchByViewPortConns, connector -> connector.searchByViewport(viewport));
+
+        final Set<cgeo.geocaching.persistence.entities.Geocache.LiveCache> result = new HashSet<>();
+        for (Geocache c : searchResult.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
+            result.add(new cgeo.geocaching.persistence.entities.Geocache.LiveCache(c, new Date()));
+        }
+        return result;
     }
 
     @Nullable

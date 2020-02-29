@@ -93,6 +93,12 @@ public class Geocache {
     // Has this cache been archived?
     public Boolean archived;
 
+    // Has this cache been found by the user
+    public Boolean found;
+
+    // Is the user the owner of this Geocache
+    public Boolean userIsOwner;
+
     // Is this cache accessible to premium members only?
     public Boolean premiumMembersOnly;
 
@@ -128,6 +134,7 @@ public class Geocache {
         public boolean archived;
         public boolean premiumMembersOnly;
         public Date liveUpdated;
+        public boolean userIsOwner;
 
         // TODO evaluate if more cache data can be updated from the live map
         // Create a new LiveCache object using the data from a legacy geocache object
@@ -141,6 +148,12 @@ public class Geocache {
             this.disabled = cache.isDisabled();
             this.archived = cache.isArchived();
             this.premiumMembersOnly = cache.isPremiumMembersOnly();
+            this.userIsOwner = cache.isOwner();
+        }
+
+        public LiveCache(final cgeo.geocaching.models.Geocache cache, final Date liveUpdated) {
+            this(cache);
+            this.liveUpdated = liveUpdated;
         }
     }
 
@@ -177,5 +190,7 @@ public class Geocache {
         this.attributes = new HashSet<>(cache.getAttributes());
         this.offline = cache.isOffline();
         this.detailed = cache.isDetailed();
+        this.found = cache.isFound();
+        this.userIsOwner = cache.isOwner();
     }
 }
