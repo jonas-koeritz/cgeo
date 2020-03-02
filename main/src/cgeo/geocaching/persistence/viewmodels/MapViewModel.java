@@ -25,8 +25,6 @@ public class MapViewModel extends AndroidViewModel {
     private LiveData<List<Geocache>> listGeocaches;
 
     private MapMode mapMode = MapMode.LIVE;
-    private Viewport previousViewport;
-
 
     public MapViewModel(final Application application) {
         super(application);

@@ -80,6 +80,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
 
 import java.io.File;
 import java.io.IOException;
@@ -178,7 +179,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
 
         Log.d("NewMap: onCreate");
 
-        mapViewModel = new ViewModelProvider(this).get(MapViewModel.class);
+        mapViewModel = ViewModelProviders.of(this).get(MapViewModel.class);
 
         ResourceBitmapCacheMonitor.addRef();
         AndroidGraphicFactory.createInstance(this.getApplication());

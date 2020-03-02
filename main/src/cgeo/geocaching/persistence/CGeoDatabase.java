@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
         Waypoint.class,
         GeocacheListCrossRef.class,
 },
-        version = 2020022811,
+        version = 2020022812,
         exportSchema = false
 )
 @TypeConverters({cgeo.geocaching.persistence.util.TypeConverters.class})
