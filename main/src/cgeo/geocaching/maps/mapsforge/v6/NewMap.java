@@ -42,6 +42,7 @@ import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.permission.PermissionHandler;
 import cgeo.geocaching.permission.PermissionRequestContext;
 import cgeo.geocaching.permission.RestartLocationPermissionGrantedCallback;
+import cgeo.geocaching.persistence.viewmodels.MapViewModel;
 import cgeo.geocaching.sensors.GeoData;
 import cgeo.geocaching.sensors.GeoDirHandler;
 import cgeo.geocaching.sensors.Sensors;
@@ -78,6 +79,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
+import androidx.lifecycle.ViewModelProvider;
 
 import java.io.File;
 import java.io.IOException;
@@ -168,11 +170,15 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
     public static final int UPDATE_PROGRESS = 0;
     public static final int FINISHED_LOADING_DETAILS = 1;
 
+    private MapViewModel mapViewModel;
+
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         Log.d("NewMap: onCreate");
+
+        mapViewModel = new ViewModelProvider(this).get(MapViewModel.class);
 
         ResourceBitmapCacheMonitor.addRef();
         AndroidGraphicFactory.createInstance(this.getApplication());
@@ -393,6 +399,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                     // reset target cache on single mode map
                     targetGeocode = mapOptions.geocode;
                 }
+                updateViewport();
                 return true;
             case R.id.menu_store_caches:
                 return storeCaches(caches.getVisibleCacheGeocodes());
@@ -410,6 +417,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 if (!Settings.isExcludeMyCaches()) {
                     Tile.cache.clear();
                 }
+                updateViewport();
                 return true;
             case R.id.menu_disabled_mode:
                 Settings.setExcludeDisabled(!Settings.isExcludeDisabledCaches());
@@ -418,6 +426,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 if (!Settings.isExcludeDisabledCaches()) {
                     Tile.cache.clear();
                 }
+                updateViewport();
                 return true;
             case R.id.menu_archived_mode:
                 Settings.setExcludeArchived(!Settings.isExcludeArchivedCaches());
@@ -426,6 +435,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 if (!Settings.isExcludeArchivedCaches()) {
                     Tile.cache.clear();
                 }
+                updateViewport();
                 return true;
             case R.id.menu_hidewp_original:
                 Settings.setExcludeWpOriginal(!Settings.isExcludeWpOriginal());
@@ -1380,7 +1390,19 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 NewMap.followMyLocation = false;
                 map.switchMyLocationButton();
             }
+            if (map != null) {
+                map.updateViewport();
+            }
         }
+    }
+
+    private void updateViewport() {
+        mapViewModel.setCurrentViewport(
+                mapView.getViewport(),
+                mapOptions.isLiveEnabled,
+                Settings.isExcludeDisabledCaches(),
+                Settings.isExcludeMyCaches(),
+                Settings.isExcludeMyCaches());
     }
 
     public void showSelection(@NonNull final List<GeoitemRef> items) {

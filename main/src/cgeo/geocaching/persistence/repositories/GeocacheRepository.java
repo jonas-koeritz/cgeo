@@ -34,6 +34,8 @@ public class GeocacheRepository {
     private MutableLiveData<DownloadStatus> downloadStatus;
     private Handler mainHandler;
 
+    private Viewport previousViewport;
+
     public GeocacheRepository(final Application application) {
         final CGeoDatabase db = CGeoDatabase.getDatabase(application);
         geocacheDao = db.geocacheDao();
@@ -93,7 +95,12 @@ public class GeocacheRepository {
 
     public LiveData<List<Geocache>> getCachesInViewport(final Viewport viewport, final boolean loadLiveCaches, final boolean activeCachesOnly, final boolean excludeOwnedCaches, final boolean excludeFoundCaches) {
         if (loadLiveCaches) {
-            loadLiveCachesInViewport(viewport);
+            if (mapMoved(previousViewport, viewport)) {
+                previousViewport = viewport;
+                loadLiveCachesInViewport(viewport);
+            } else {
+                Log.d("Map didn't move enough to trigger a live caches download");
+            }
         }
 
         return geocacheDao.getGeocachesInRectangle(
@@ -132,5 +139,12 @@ public class GeocacheRepository {
 
     public LiveData<List<Geocache>> getCachesByGeocode(final Set<String> geocodes) {
         return geocacheDao.getCachesByGeocode(geocodes);
+    }
+
+    private boolean mapMoved(final Viewport referenceViewport, final Viewport newViewport) {
+        if (previousViewport == null) {
+            return true;
+        }
+        return Math.abs(newViewport.getLatitudeSpan() - referenceViewport.getLatitudeSpan()) > 50e-6 || Math.abs(newViewport.getLongitudeSpan() - referenceViewport.getLongitudeSpan()) > 50e-6 || Math.abs(newViewport.center.getLatitude() - referenceViewport.center.getLatitude()) > referenceViewport.getLatitudeSpan() / 4 || Math.abs(newViewport.center.getLongitude() - referenceViewport.center.getLongitude()) > referenceViewport.getLongitudeSpan() / 4;
     }
 }
