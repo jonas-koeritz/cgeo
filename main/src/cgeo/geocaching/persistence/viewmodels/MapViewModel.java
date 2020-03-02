@@ -65,32 +65,26 @@ public class MapViewModel extends AndroidViewModel {
 
     private void clearCacheSources() {
         if (liveMapGeocaches != null) {
-            Log.d("Removing LIVE caches");
             visibleGeocaches.removeSource(liveMapGeocaches);
         }
 
         if (listGeocaches != null) {
-            Log.d("Removing LIST caches");
             visibleGeocaches.removeSource(listGeocaches);
         }
     }
 
     public void setCurrentViewport(final Viewport viewport, final boolean loadLiveCaches, final boolean activeCachesOnly, final boolean excludeOwnedCaches, final boolean excludeFoundCaches) {
         // Replaces the previous LiveData source with the new source created for the new Viewport
-        Log.d(String.format("Adjusting Viewport: %s, MapMode: %s", viewport, mapMode));
-
         clearCacheSources();
 
         switch (mapMode) {
             case LIST:
             case SINGLE:
-                Log.d("Adding LIST caches");
                 visibleGeocaches.addSource(listGeocaches, caches -> visibleGeocaches.setValue(caches));
                 break;
             case COORDS:
                 break;
             default: // Default to LIVE
-                Log.d("Adding LIVE caches");
                 liveMapGeocaches = geocacheRepository.getCachesInViewport(viewport, loadLiveCaches, activeCachesOnly, excludeOwnedCaches, excludeFoundCaches);
                 visibleGeocaches.addSource(liveMapGeocaches, caches -> visibleGeocaches.setValue(caches));
         }

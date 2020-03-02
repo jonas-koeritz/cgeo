@@ -96,10 +96,10 @@ public class GeocacheRepository {
     public LiveData<List<Geocache>> getCachesInViewport(final Viewport viewport, final boolean loadLiveCaches, final boolean activeCachesOnly, final boolean excludeOwnedCaches, final boolean excludeFoundCaches) {
         if (loadLiveCaches) {
             if (mapMoved(previousViewport, viewport)) {
+                Log.d("Map Viewport moved, triggering a live caches download.");
+                // TODO implement rate limiting and cancellation of previous download task
                 previousViewport = viewport;
                 loadLiveCachesInViewport(viewport);
-            } else {
-                Log.d("Map didn't move enough to trigger a live caches download");
             }
         }
 

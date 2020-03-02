@@ -1398,6 +1398,8 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
     }
 
     private void updateViewport() {
+        // TODO make sure that the latest viewport ends up beeing submitted, currently the last bit of movement doesn't trigger a download
+        // Somehow detect when the map has "settled"
         mapViewModel.setCurrentViewport(
                 mapView.getViewport(),
                 mapOptions.isLiveEnabled,
