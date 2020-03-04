@@ -42,6 +42,7 @@ import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.permission.PermissionHandler;
 import cgeo.geocaching.permission.PermissionRequestContext;
 import cgeo.geocaching.permission.RestartLocationPermissionGrantedCallback;
+import cgeo.geocaching.persistence.util.DownloadStatus;
 import cgeo.geocaching.persistence.viewmodels.MapViewModel;
 import cgeo.geocaching.sensors.GeoData;
 import cgeo.geocaching.sensors.GeoDirHandler;
@@ -79,6 +80,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 
@@ -1500,12 +1502,19 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
 
         try {
             if (item.getType() == CoordinatesType.CACHE) {
-                final Geocache cache = DataStore.loadCache(item.getGeocode(), LoadFlags.LOAD_CACHE_OR_DB);
-                if (cache != null) {
-                    final RequestDetailsThread requestDetailsThread = new RequestDetailsThread(cache, this);
-                    requestDetailsThread.start();
-                    return;
-                }
+                final LiveData<DownloadStatus> detailsDownloadStatus = mapViewModel.loadCacheDetails(item.getGeocode(), false);
+                detailsDownloadStatus.observe(this, s -> {
+                    if (s == DownloadStatus.SUCCESS) {
+                        popupGeocodes.add(item.getGeocode());
+                        // TODO CachePopUp doesn't yet know where to get it's data from
+                        CachePopup.startActivityAllowTarget(this, item.getGeocode());
+                        detailsDownloadStatus.removeObservers(this);
+                    } else if (s == DownloadStatus.ERROR) {
+                        Log.w("Error requesting cache popup info");
+                        ActivityMixin.showToast(this, R.string.err_request_popup_info);
+                        detailsDownloadStatus.removeObservers(this);
+                    }
+                });
                 return;
             }
 
@@ -1545,17 +1554,17 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
     private static class RequestDetailsThread extends Thread {
 
         @NonNull
-        private final Geocache cache;
+        private final cgeo.geocaching.persistence.entities.Geocache cache;
         @NonNull
         private final WeakReference<NewMap> mapRef;
 
-        RequestDetailsThread(@NonNull final Geocache cache, @NonNull final NewMap map) {
+        RequestDetailsThread(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache, @NonNull final NewMap map) {
             this.cache = cache;
             this.mapRef = new WeakReference<>(map);
         }
 
         public boolean requestRequired() {
-            return CacheType.UNKNOWN == cache.getType() || cache.getDifficulty() == 0;
+            return cache.cacheType == CacheType.UNKNOWN || (cache.difficulty != null && cache.difficulty == 0);
         }
 
         @Override
@@ -1567,14 +1576,14 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
             if (requestRequired()) {
                 try {
                     /* final SearchResult search = */
-                    GCMap.searchByGeocodes(Collections.singleton(cache.getGeocode()));
+                    GCMap.searchByGeocodes(Collections.singleton(cache.geocode));
                 } catch (final Exception ex) {
                     Log.w("Error requesting cache popup info", ex);
                     ActivityMixin.showToast(map, R.string.err_request_popup_info);
                 }
             }
-            map.popupGeocodes.add(cache.getGeocode());
-            CachePopup.startActivityAllowTarget(map, cache.getGeocode());
+            map.popupGeocodes.add(cache.geocode);
+            CachePopup.startActivityAllowTarget(map, cache.geocode);
         }
     }
 

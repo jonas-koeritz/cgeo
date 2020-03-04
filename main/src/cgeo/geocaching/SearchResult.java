@@ -271,6 +271,12 @@ public class SearchResult implements Parcelable {
         DataStore.saveCaches(caches, EnumSet.of(SaveFlag.CACHE));
     }
 
+    public void add(@NonNull final Collection<Geocache> caches) {
+        for (final Geocache geocache : caches) {
+            addGeocode(geocache.getGeocode());
+        }
+    }
+
     public boolean isEmpty() {
         return geocodes.isEmpty();
     }
@@ -336,4 +342,23 @@ public class SearchResult implements Parcelable {
         }).blockingGet();
     }
 
+    public static <C extends IConnector> List<Geocache> parallelCombineEntitiesActive(final Collection<C> connectors,
+                                                                                                                   final Function<C, List<Geocache>> func) {
+        return Observable.fromIterable(connectors).flatMapMaybe((Function<C, Maybe<List<Geocache>>>) connector -> {
+            if (!connector.isActive()) {
+                return Maybe.empty();
+            }
+            return Maybe.fromCallable(() -> {
+                try {
+                    return func.apply(connector);
+                } catch (final Exception e) {
+                    Log.w("parallelCombineActive: swallowing error from connector " + connector, e);
+                    return null;
+                }
+            }).subscribeOn(AndroidRxUtils.networkScheduler);
+        }).reduce(new ArrayList<Geocache>(), (searchResult, searchResult2) -> {
+            searchResult.addAll(searchResult2);
+            return searchResult;
+        }).blockingGet();
+    }
 }

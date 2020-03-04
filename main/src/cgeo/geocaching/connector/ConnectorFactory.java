@@ -347,14 +347,8 @@ public final class ConnectorFactory {
      * @return unordered Set of LiveCache entities
      */
     @NonNull
-    public static Set<cgeo.geocaching.persistence.entities.Geocache.LiveCache> liveSearchByViewport(@NonNull final Viewport viewport) {
-        final SearchResult searchResult = SearchResult.parallelCombineActive(searchByViewPortConns, connector -> connector.searchByViewport(viewport));
-
-        final Set<cgeo.geocaching.persistence.entities.Geocache.LiveCache> result = new HashSet<>();
-        for (Geocache c : searchResult.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
-            result.add(new cgeo.geocaching.persistence.entities.Geocache.LiveCache(c, new Date()));
-        }
-        return result;
+    public static List<Geocache> liveSearchByViewport(@NonNull final Viewport viewport) {
+        return SearchResult.parallelCombineEntitiesActive(searchByViewPortConns, connector -> connector.searchGeocachesByViewport(viewport));
     }
 
     @Nullable

@@ -213,6 +213,12 @@ public class GCConnector extends AbstractConnector implements ISearchByGeocode, 
         return GCMap.searchByViewport(viewport);
     }
 
+    @NonNull
+    @Override
+    public List<Geocache> searchGeocachesByViewport(@NonNull Viewport viewport) {
+        return GCMap.searchGeocachesByViewport(viewport);
+    }
+
     @Override
     public boolean isZippedGPXFile(@NonNull final String fileName) {
         return GPX_ZIP_FILE_PATTERN.matcher(fileName).matches();

@@ -10,6 +10,7 @@ import cgeo.geocaching.location.GeopointFormatter.Format;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.network.Parameters;
+import cgeo.geocaching.persistence.entities.User;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.utils.JsonUtils;
 import cgeo.geocaching.utils.Log;
@@ -169,6 +170,50 @@ public class GCMap {
         searchResult.addAndPutInCache(foundCaches);
 
         return searchResult;
+    }
+
+    @NonNull
+    public static List<Geocache> searchGeocachesByViewport(@NonNull final Viewport viewport) {
+        Log.d("GCMap.searchGeocachesByViewport" + viewport.toString());
+
+        final List<Geocache> result = new ArrayList<>();
+
+        final GCWebAPI.MapSearchResultSet mapSearchResultSet = GCWebAPI.searchMap(viewport);
+
+        if (mapSearchResultSet.results != null) {
+            for (final GCWebAPI.MapSearchResult r : mapSearchResultSet.results) {
+                if (r.postedCoordinates != null) {
+                    final Geocache c = new Geocache();
+                    c.setDetailed(false);
+                    c.setReliableLatLon(true);
+                    c.setGeocode(r.code);
+                    c.setName(r.name);
+                    c.setCoords(new Geopoint(r.postedCoordinates.latitude, r.postedCoordinates.longitude));
+                    c.setType(CacheType.getByWaypointType(Integer.toString(r.geocacheType)));
+                    c.setDifficulty(r.difficulty);
+                    c.setTerrain(r.terrain);
+                    c.setSize(containerTypeToCacheSize(r.containerType));
+                    c.setPremiumMembersOnly(r.premiumOnly);
+
+                    //Only set found if the map returns a "found",
+                    //the map API will possibly lag behind and break
+                    //cache merging if "not found" is set
+                    if (r.userFound) {
+                        c.setFound(true);
+                    }
+
+                    c.setFavoritePoints(r.favoritePoints);
+                    c.setDisabled(r.cacheStatus == 1);
+                    if (r.owner != null) {
+                        c.setOwnerDisplayName(r.owner.username);
+                        c.setOwnerUserId(r.owner.username);
+                    }
+                    result.add(c);
+                }
+            }
+        }
+
+        return result;
     }
 
     private static CacheSize containerTypeToCacheSize(final int containerType) {

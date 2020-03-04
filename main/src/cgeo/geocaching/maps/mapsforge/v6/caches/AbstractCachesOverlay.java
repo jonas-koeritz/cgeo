@@ -131,6 +131,7 @@ public abstract class AbstractCachesOverlay {
 
     // TODO the update function is the cause of markers not getting updated
     // the markers will not be redrawn until they have been scrolled out of and into the viewport
+    // because there is no invalidation for LiveData based overlays
     protected void update(final List<cgeo.geocaching.persistence.entities.Geocache> cachesToDisplay) {
         final Collection<String> removeCodes = getGeocodes();
         final Collection<String> newCodes = new HashSet<>();

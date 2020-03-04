@@ -24,6 +24,7 @@ public abstract class GeocacheDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract long insert(Geocache geocache);
 
+
     @Update(onConflict = OnConflictStrategy.IGNORE)
     abstract void update(Geocache entity);
 
@@ -51,6 +52,12 @@ public abstract class GeocacheDao {
     @Update(entity = Geocache.class, onConflict = OnConflictStrategy.IGNORE)
     abstract void update(Geocache.LiveCache entity);
 
+    @Insert(entity = Geocache.class, onConflict = OnConflictStrategy.IGNORE)
+    abstract long insert(Geocache.GeocodeResult geocache);
+
+    @Update(entity = Geocache.class, onConflict = OnConflictStrategy.IGNORE)
+    abstract void update(Geocache.GeocodeResult entity);
+
     @Transaction
     public void upsert(final Geocache.LiveCache geocache) {
         if (geocache.liveUpdated == null) {
@@ -60,6 +67,18 @@ public abstract class GeocacheDao {
         final long id = insert(geocache);
         if (id == -1) { // Already existed
             update(geocache);
+        }
+    }
+
+    @Transaction
+    public void upsert(final Geocache.GeocodeResult result) {
+        if (result.liveUpdated == null) {
+            result.liveUpdated = new Date();
+        }
+
+        final long id = insert(result);
+        if (id == -1) { // Already existed
+            update(result);
         }
     }
 
@@ -95,11 +114,14 @@ public abstract class GeocacheDao {
     @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
     public abstract LiveData<Geocache> getGeocacheByGeocode(String geocode);
 
+    @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
+    public abstract Geocache getGeocacheByGeocodeSync(String geocode);
+
     @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND NOT (:activeCachesOnly AND disabled = 1) AND NOT (:activeCachesOnly AND archived = 1) AND NOT (:excludeOwnedCaches AND userIsOwner = 1) AND NOT (:excludeFoundCaches AND (found IS NOT NULL) AND found = 1) LIMIT 500")
     public abstract LiveData<List<Geocache>> getGeocachesInRectangle(double minLat, double minLon, double maxLat, double maxLon, boolean activeCachesOnly, boolean excludeOwnedCaches, boolean excludeFoundCaches);
 
     @Query("SELECT * FROM geocaches WHERE geocode IN (:geocodes)")
-    public abstract LiveData<List<Geocache>> getCachesByGeocode(Set<String> geocodes);
+    public abstract LiveData<List<Geocache>> getCachesByGeocode(List<String> geocodes);
 
     @Transaction
     @Query("SELECT * FROM geocaches WHERE geocode IN (:geocodes)")

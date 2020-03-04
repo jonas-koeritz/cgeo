@@ -152,12 +152,14 @@ public class CachesBundle {
 
         int result = 0;
 
+        /*
         if (this.baseOverlay != null) {
             result += this.baseOverlay.getVisibleCachesCount();
         }
         if (this.storedOverlay != null) {
             result += this.storedOverlay.getVisibleCachesCount();
         }
+        */
         if (this.liveOverlay != null) {
             result += this.liveOverlay.getVisibleCachesCount();
         }

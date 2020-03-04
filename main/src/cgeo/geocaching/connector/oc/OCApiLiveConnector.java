@@ -31,6 +31,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
@@ -66,6 +68,13 @@ public class OCApiLiveConnector extends OCApiConnector implements ISearchByCente
 
         return result;
     }
+
+    @Override
+    @NonNull
+    public List<Geocache> searchGeocachesByViewport(@NonNull final Viewport viewport) {
+        return OkapiClient.getCachesBBox(viewport, this);
+    }
+
 
     @Override
     public SearchResult searchByCenter(@NonNull final Geopoint center) {

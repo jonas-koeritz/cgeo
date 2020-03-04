@@ -63,10 +63,10 @@ public class Geocache {
     public CacheSize size;
 
     // The latitude of the caches position
-    public double latitude;
+    public Double latitude;
 
     // The longitude of the caches position
-    public double longitude;
+    public Double longitude;
 
     /**
      * The region this cache resides in, as defined by the connector.
@@ -109,6 +109,8 @@ public class Geocache {
 
     public Boolean finalDefined;
 
+    public Integer favoritePoints;
+
     // Does the cache require a password to submit a new log?
     public Boolean logPasswordRequired;
 
@@ -137,6 +139,22 @@ public class Geocache {
 
     public int getMapMarkerId() {
         return getConnector().getCacheMapMarkerId(BooleanUtils.isTrue(disabled) || BooleanUtils.isTrue(archived));
+    }
+
+    // TODO find a better name for this class
+    public static class GeocodeResult {
+        @NonNull public String geocode;
+        public Double difficulty;
+        public Double terrain;
+        public Integer favoritePoints;
+        public Date liveUpdated;
+
+        public GeocodeResult(final cgeo.geocaching.models.Geocache cache) {
+            this.geocode = cache.getGeocode();
+            this.difficulty = (double) cache.getDifficulty();
+            this.terrain = (double) cache.getTerrain();
+            this.favoritePoints = cache.getFavoritePoints();
+        }
     }
 
     /**
@@ -198,8 +216,10 @@ public class Geocache {
         this.hint = cache.getHint();
         this.cacheType = cache.getType();
         this.size = cache.getSize();
-        this.latitude = cache.getCoords().getLatitude();
-        this.longitude = cache.getCoords().getLongitude();
+        if (cache.getCoords() != null) {
+            this.latitude = cache.getCoords().getLatitude();
+            this.longitude = cache.getCoords().getLongitude();
+        }
         this.region = cache.getLocation();
         this.personalNote = cache.getPersonalNote();
         this.description = cache.getDescription();
@@ -211,6 +231,7 @@ public class Geocache {
         this.logPasswordRequired = cache.isLogPasswordRequired();
         this.attributes = new HashSet<>(cache.getAttributes());
         this.offline = cache.isOffline();
+        this.favoritePoints = cache.getFavoritePoints();
         this.detailed = cache.isDetailed();
         this.found = cache.isFound();
         this.userIsOwner = cache.isOwner();

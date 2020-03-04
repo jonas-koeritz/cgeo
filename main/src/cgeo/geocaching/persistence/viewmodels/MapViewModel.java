@@ -128,7 +128,19 @@ public class MapViewModel extends AndroidViewModel {
         }
     }
 
-    public void setGeocacheList(final Set<String> geocodes) {
+    public LiveData<List<Geocache>> getCachesByGeocode(final List<String> geocodes) {
+        return geocacheRepository.getCachesByGeocode(geocodes);
+    }
+
+    public LiveData<Geocache> getCacheByGeocode(final String geocode) {
+        return geocacheRepository.getGeocacheByGeocode(geocode);
+    }
+
+    public LiveData<DownloadStatus> loadCacheDetails(final String geocode, final boolean forceDownload) {
+        return geocacheRepository.loadGeocacheDetails(geocode, forceDownload);
+    }
+
+    public void setGeocacheList(final List<String> geocodes) {
         // TODO implement / test list handling
         this.mapMode = LIST;
         listGeocaches = geocacheRepository.getCachesByGeocode(geocodes);

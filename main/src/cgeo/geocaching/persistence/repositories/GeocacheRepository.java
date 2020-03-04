@@ -1,6 +1,12 @@
 package cgeo.geocaching.persistence.repositories;
 
+import cgeo.geocaching.SearchResult;
 import cgeo.geocaching.connector.ConnectorFactory;
+import cgeo.geocaching.connector.IConnector;
+import cgeo.geocaching.connector.gc.GCConnector;
+import cgeo.geocaching.connector.gc.GCMap;
+import cgeo.geocaching.enumerations.CacheType;
+import cgeo.geocaching.enumerations.LoadFlags;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.persistence.CGeoDatabase;
 import cgeo.geocaching.persistence.dao.GeocacheDao;
@@ -17,6 +23,9 @@ import android.os.Handler;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import org.apache.commons.lang3.BooleanUtils;
+
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +59,12 @@ public class GeocacheRepository {
     public void upsert(final Geocache geocache) {
         CGeoDatabase.databaseWriteExecutor.execute(() -> {
             geocacheDao.upsert(geocache);
+        });
+    }
+
+    public void upsert(final Geocache.GeocodeResult result) {
+        CGeoDatabase.databaseWriteExecutor.execute(() -> {
+            geocacheDao.upsert(result);
         });
     }
 
@@ -128,8 +143,6 @@ public class GeocacheRepository {
         );
     }
 
-
-
     private void setDownloadStatus(final DownloadStatus status) {
         mainHandler.post(() -> downloadStatus.setValue(status));
     }
@@ -140,9 +153,12 @@ public class GeocacheRepository {
             Log.d(String.format("Downloading Geocaches for Viewport: %s", viewport));
             setDownloadStatus(DownloadStatus.LOADING);
 
-            final Set<Geocache.LiveCache> result = ConnectorFactory.liveSearchByViewport(viewport);
-            for (Geocache.LiveCache c : result) {
-                upsert(c);
+            // TODO call the different connectors on our own to get as much information as possible
+            // relying on Geocache model Objects to do this hides the fact that OC and GC return different
+            // amounts of data
+            final List<cgeo.geocaching.models.Geocache> result = ConnectorFactory.liveSearchByViewport(viewport);
+            for (cgeo.geocaching.models.Geocache c : result) {
+                upsert(new Geocache.LiveCache(c));
             }
 
             setDownloadStatus(DownloadStatus.SUCCESS);
@@ -153,7 +169,36 @@ public class GeocacheRepository {
         return geocacheDao.getGeocacheByGeocode(geocode);
     }
 
-    public LiveData<List<Geocache>> getCachesByGeocode(final Set<String> geocodes) {
+    public LiveData<DownloadStatus> loadGeocacheDetails(final String geocode, final boolean forceDownload) {
+        final MutableLiveData<DownloadStatus> status = new MutableLiveData<>();
+        status.setValue(DownloadStatus.LOADING);
+        downloadExecutor.execute(() -> {
+            final Geocache c = geocacheDao.getGeocacheByGeocodeSync(geocode);
+            if (c.difficulty == null || c.cacheType == null || c.difficulty == 0.0 || c.cacheType == CacheType.UNKNOWN || forceDownload) {
+                try {
+                    final IConnector connector = ConnectorFactory.getConnector(geocode);
+                    if (connector instanceof GCConnector) {
+                        final SearchResult result = GCMap.searchByGeocodes(Collections.singleton(geocode));
+                        // TODO remove dependency on the cacheCache
+                        for (cgeo.geocaching.models.Geocache cache : result.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
+                            upsert(new Geocache.GeocodeResult(cache));
+                        }
+                        status.postValue(DownloadStatus.SUCCESS);
+                    }
+                } catch (Exception e) {
+                    status.postValue(DownloadStatus.ERROR);
+                }
+            } else {
+                // Nothing to do here
+                status.postValue(DownloadStatus.SUCCESS);
+            }
+
+            status.postValue(DownloadStatus.SUCCESS);
+        });
+        return status;
+    }
+
+    public LiveData<List<Geocache>> getCachesByGeocode(final List<String> geocodes) {
         return geocacheDao.getCachesByGeocode(geocodes);
     }
 }

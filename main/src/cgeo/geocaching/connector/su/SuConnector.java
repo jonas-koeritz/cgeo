@@ -216,6 +216,17 @@ public class SuConnector extends AbstractConnector implements ISearchByCenter, I
 
     @Override
     @NonNull
+    public List<Geocache> searchGeocachesByViewport(@NonNull final Viewport viewport) {
+        try {
+            return SuApi.searchByBBox(viewport, this);
+        } catch (Exception e) {
+            Log.e("SuConnector.searchByViewport failed: ", e);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    @NonNull
     public SearchResult searchByCenter(@NonNull final Geopoint center) {
         try {
             return new SearchResult(SuApi.searchByCenter(center, 20, this));
