@@ -4,6 +4,7 @@ import android.content.Context;
 
 import cgeo.geocaching.persistence.dao.GeocacheDao;
 import cgeo.geocaching.persistence.dao.ListDao;
+import cgeo.geocaching.persistence.dao.WaypointDao;
 import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.Geocache;
 import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
@@ -28,13 +29,14 @@ import java.util.concurrent.Executors;
         Waypoint.class,
         GeocacheListCrossRef.class,
 },
-        version = 2020022812,
+        version = 2020030401,
         exportSchema = false
 )
 @TypeConverters({cgeo.geocaching.persistence.util.TypeConverters.class})
 public abstract class CGeoDatabase extends RoomDatabase {
     public abstract GeocacheDao geocacheDao();
     public abstract ListDao listDao();
+    public abstract WaypointDao waypointDao();
 
     private static volatile CGeoDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;

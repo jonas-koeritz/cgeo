@@ -1,5 +1,8 @@
 package cgeo.geocaching.maps.mapsforge.v6.caches;
 
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LiveData;
+
 import cgeo.geocaching.SearchResult;
 import cgeo.geocaching.enumerations.WaypointType;
 import cgeo.geocaching.location.Geopoint;
@@ -7,6 +10,9 @@ import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.location.WaypointDistanceInfo;
 import cgeo.geocaching.maps.mapsforge.v6.MapHandlers;
 import cgeo.geocaching.maps.mapsforge.v6.MfMapView;
+import cgeo.geocaching.persistence.entities.Geocache;
+import cgeo.geocaching.persistence.entities.Waypoint;
+import cgeo.geocaching.persistence.util.DownloadStatus;
 import cgeo.geocaching.settings.Settings;
 
 import java.util.ArrayList;
@@ -38,10 +44,10 @@ public class CachesBundle {
     private static final int INITIAL_ENTRY_COUNT = 200;
     private final Set<GeoEntry> geoEntries = Collections.synchronizedSet(new GeoEntrySet(INITIAL_ENTRY_COUNT));
 
-    private WaypointsOverlay wpOverlay;
+    private LiveDataWaypointsOverlay wpOverlay;
     private AbstractCachesOverlay baseOverlay;
     private AbstractCachesOverlay storedOverlay;
-    private LiveCachesOverlay liveOverlay;
+    private LiveDataCachesOverlay liveOverlay;
     private final List<SeparatorLayer> separators = new ArrayList<>();
     private boolean mapModeSingle = false;
 
@@ -71,8 +77,6 @@ public class CachesBundle {
         final SeparatorLayer separator5 = new SeparatorLayer();
         this.separators.add(separator5);
         this.mapView.getLayerManager().getLayers().add(separator5);
-
-        this.wpOverlay = new WaypointsOverlay(WP_OVERLAY_ID, this.geoEntries, this, separators.get(WP_SEPERATOR), this.mapHandlers);
     }
 
     /**
@@ -113,34 +117,17 @@ public class CachesBundle {
         this.baseOverlay = new SinglePointOverlay(coords, waypointType, BASE_OVERLAY_ID, this.geoEntries, this, separators.get(BASE_SEPARATOR), this.mapHandlers);
     }
 
-    public void handleLiveLayers(final boolean enable) {
-        if (enable) {
-            if (this.liveOverlay == null) {
-                final SeparatorLayer separator2 = this.separators.get(LIVE_SEPARATOR);
-                this.liveOverlay = new LiveCachesOverlay(LIVE_OVERLAY_ID, this.geoEntries, this, separator2, this.mapHandlers);
-            }
-        } else {
-            // Disable only download, keep stored caches
-            if (this.liveOverlay != null) {
-                this.liveOverlay.onDestroy();
-                this.liveOverlay = null;
-            }
+    public void handleLiveLayers(final LiveData<List<Geocache>> visibleCaches, final LiveData<DownloadStatus> downloadStatus, final LifecycleOwner owner) {
+        if (this.liveOverlay == null) {
+            final SeparatorLayer separator2 = this.separators.get(LIVE_SEPARATOR);
+            this.liveOverlay = new LiveDataCachesOverlay(visibleCaches, downloadStatus, owner, LIVE_OVERLAY_ID, this.geoEntries, this, separator2, this.mapHandlers);
         }
     }
 
-    /**
-     * Enables the stored cache layer. No disabling again!
-     *
-     * @param enable true - enable stored layer, false - leave untouched
-     */
-    public void enableStoredLayers(final boolean enable) {
-        if (!enable || this.storedOverlay != null) {
-            return;
-        }
-
-        final SeparatorLayer separator1 = this.separators.get(STORED_SEPARATOR);
-        this.storedOverlay = new StoredCachesOverlay(STORED_OVERLAY_ID, this.geoEntries, this, separator1, this.mapHandlers);
+    public void handleWaypointLayer(final LiveData<List<Waypoint>> waypoints, final LifecycleOwner owner) {
+        this.wpOverlay = new LiveDataWaypointsOverlay(waypoints, owner, WP_OVERLAY_ID, this.geoEntries, this, separators.get(WP_SEPERATOR), this.mapHandlers);
     }
+
 
     public void onDestroy() {
         if (this.baseOverlay != null) {
@@ -299,16 +286,7 @@ public class CachesBundle {
     }
 
     public void handleWaypoints() {
-        if (this.mapModeSingle || getVisibleCachesCount() < Settings.getWayPointsThreshold()) {
-            Collection<String> baseGeocodes = Collections.emptyList();
-            if (baseOverlay != null) {
-                baseGeocodes = baseOverlay.getCacheGeocodes();
-            }
-            final boolean showStored = storedOverlay != null;
-            wpOverlay.showWaypoints(baseGeocodes, showStored);
-        } else {
-            wpOverlay.hideWaypoints();
-        }
+        // TODO remove references
     }
 
     public WaypointDistanceInfo getClosestDistanceInM(final Geopoint coord) {

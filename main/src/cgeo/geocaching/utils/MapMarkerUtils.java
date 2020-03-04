@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 public final class MapMarkerUtils {
@@ -56,6 +57,11 @@ public final class MapMarkerUtils {
      */
     @NonNull
     public static CacheMarker getCacheMarker(final Resources res, final Geocache cache) {
+        return getCacheMarker(res, cache, null);
+    }
+
+    @NonNull
+    public static CacheMarker getCacheMarker(final Resources res, final cgeo.geocaching.persistence.entities.Geocache cache) {
         return getCacheMarker(res, cache, null);
     }
 
@@ -104,6 +110,34 @@ public final class MapMarkerUtils {
         }
     }
 
+    @NonNull
+    public static CacheMarker getCacheMarker(final Resources res, final cgeo.geocaching.persistence.entities.Geocache cache, @Nullable final CacheListType cacheListType) {
+        final int assignedMarkers = getAssignedMarkers(cache);
+        final int hashcode = new HashCodeBuilder()
+                .append(cache.cacheType.id)
+                .append(cache.disabled || cache.archived)
+                .append(cache.getMapMarkerId())
+                .append(cache.userIsOwner)
+                .append(cache.found)
+                .append(showUserModifiedCoords(cache))
+                .append(cache.personalNote)
+                //.append(!cache.getLists().isEmpty())
+                //.append(cache.getOfflineLogType())
+                .append(showBackground(cacheListType))
+                .append(showFloppyOverlay(cacheListType))
+                .append(assignedMarkers)
+                .toHashCode();
+
+        synchronized (overlaysCache) {
+            CacheMarker marker = overlaysCache.get(hashcode);
+            if (marker == null) {
+                marker = new CacheMarker(hashcode, createCacheMarker(res, cache, cacheListType, assignedMarkers));
+                overlaysCache.put(hashcode, marker);
+            }
+            return marker;
+        }
+    }
+
     /**
      * Obtain the drawable for a given waypoint.
      * Return a drawable from the cache, if a similar drawable was already generated.
@@ -121,6 +155,23 @@ public final class MapMarkerUtils {
         .append(waypoint.isVisited())
         .append(waypoint.getWaypointType().id)
         .toHashCode();
+
+        synchronized (overlaysCache) {
+            CacheMarker marker = overlaysCache.get(hashcode);
+            if (marker == null) {
+                marker = new CacheMarker(hashcode, createWaypointMarker(res, waypoint));
+                overlaysCache.put(hashcode, marker);
+            }
+            return marker;
+        }
+    }
+
+    @NonNull
+    public static CacheMarker getWaypointMarker(final Resources res, final cgeo.geocaching.persistence.entities.Waypoint waypoint) {
+        final int hashcode = new HashCodeBuilder()
+                .append(BooleanUtils.isTrue(waypoint.visited))
+                .append(waypoint.waypointType.id)
+                .toHashCode();
 
         synchronized (overlaysCache) {
             CacheMarker marker = overlaysCache.get(hashcode);
@@ -157,6 +208,22 @@ public final class MapMarkerUtils {
         return drawable;
     }
 
+    @NonNull
+    private static LayerDrawable createWaypointMarker(final Resources res, final cgeo.geocaching.persistence.entities.Waypoint waypoint) {
+        final Drawable marker = Compatibility.getDrawable(res, !BooleanUtils.isTrue(waypoint.visited) ? R.drawable.marker : R.drawable.marker_transparent);
+        final Drawable inset = Compatibility.getDrawable(res, waypoint.waypointType.markerId);
+        final Drawable[] layers = {
+                marker,
+                inset
+        };
+        final LayerDrawable drawable = new LayerDrawable(layers);
+
+        final int[] insetPadding = insetHelper(marker.getIntrinsicWidth(), marker.getIntrinsicHeight(), inset, VERTICAL.CENTER, HORIZONTAL.CENTER);
+        drawable.setLayerInset(1, insetPadding[0], insetPadding[1], insetPadding[2], insetPadding[3]);
+        return drawable;
+    }
+
+
     /**
      * Build the drawable for a given waypoint.
      *
@@ -170,6 +237,12 @@ public final class MapMarkerUtils {
     @NonNull
     public static LayerDrawable createWaypointDotMarker(final Resources res, final Waypoint waypoint) {
         final Drawable[] layers = { Compatibility.getDrawable(res, waypoint.getWaypointType().dotMarkerId) };
+        return new LayerDrawable(layers);
+    }
+
+    @NonNull
+    public static LayerDrawable createWaypointDotMarker(final Resources res, final cgeo.geocaching.persistence.entities.Waypoint waypoint) {
+        final Drawable[] layers = { Compatibility.getDrawable(res, waypoint.waypointType.dotMarkerId) };
         return new LayerDrawable(layers);
     }
 
@@ -308,6 +381,94 @@ public final class MapMarkerUtils {
         return ld;
     }
 
+    @NonNull
+    private static LayerDrawable createCacheMarker(final Resources res, final cgeo.geocaching.persistence.entities.Geocache cache, @Nullable final CacheListType cacheListType, final int assignedMarkers) {
+        // Set initial capacities to the maximum of layers and insets to avoid dynamic reallocation
+        final List<Drawable> layers = new ArrayList<>(11);
+        final List<int[]> insets = new ArrayList<>(10);
+
+        // background: disabled or not
+        final Drawable marker = Compatibility.getDrawable(res, cache.getMapMarkerId());
+
+        // get actual layer size in px
+        final int width = marker.getIntrinsicWidth();
+        final int height = marker.getIntrinsicHeight();
+
+        // Show the background circle only on map
+        if (showBackground(cacheListType)) {
+            layers.add(marker);
+            insets.add(FULLSIZE);
+        }
+
+        // cache type
+        Drawable inset = Compatibility.getDrawable(res, cache.cacheType.markerId);
+        layers.add(inset);
+        insets.add(insetHelper(width, height, inset, VERTICAL.CENTER, HORIZONTAL.CENTER));
+        // own
+        if (cache.userIsOwner != null && cache.userIsOwner) {
+            inset = Compatibility.getDrawable(res, R.drawable.marker_own);
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.TOP, HORIZONTAL.RIGHT));
+            // if not, checked if stored
+
+        }
+        // TODO implement a function to check if this cache is on any list
+        /*else if (!cache.getLists().isEmpty() && showFloppyOverlay(cacheListType)) {
+            inset = Compatibility.getDrawable(res, R.drawable.marker_stored);
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.TOP, HORIZONTAL.RIGHT));
+        }*/
+        // found
+        if (cache.found != null && cache.found) {
+            inset = Compatibility.getDrawable(res, R.drawable.marker_found);
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.TOP, HORIZONTAL.LEFT));
+            // if not, perhaps logged offline
+        }
+        // TODO implement a function to check fo offline logs
+        /*else if (cache.isLogOffline()) {
+            final LogType offlineLogType = cache.getOfflineLogType();
+            inset = Compatibility.getDrawable(res, offlineLogType == null ? R.drawable.marker_found_offline : offlineLogType.getOfflineLogOverlay());
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.TOP, HORIZONTAL.LEFT));
+        }*/
+        // user modified coords
+        if (showUserModifiedCoords(cache)) {
+            inset = Compatibility.getDrawable(res, R.drawable.marker_usermodifiedcoords);
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.BOTTOM, HORIZONTAL.RIGHT));
+        }
+        // personal note
+        if (cache.personalNote != null && cache.personalNote.length() > 0) {
+            inset = Compatibility.getDrawable(res, R.drawable.marker_personalnote);
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.BOTTOM, HORIZONTAL.LEFT));
+        }
+        // assigned lists with markers
+        int markerId = assignedMarkers & ListMarker.BITMASK;
+        if (markerId > 0) {
+            inset = Compatibility.getDrawable(res, ListMarker.getResDrawable(markerId));
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.CENTER, HORIZONTAL.LEFT));
+        }
+
+        markerId = (assignedMarkers >> ListMarker.MAX_BITS_PER_MARKER) & ListMarker.BITMASK;
+        if (markerId > 0) {
+            inset = Compatibility.getDrawable(res, ListMarker.getResDrawable(markerId));
+            layers.add(inset);
+            insets.add(insetHelper(width, height, inset, VERTICAL.CENTER, HORIZONTAL.RIGHT));
+        }
+
+        final LayerDrawable ld = new LayerDrawable(layers.toArray(new Drawable[layers.size()]));
+
+        int index = 0;
+        for (final int[] temp : insets) {
+            ld.setLayerInset(index++, temp[0], temp[1], temp[2], temp[3]);
+        }
+
+        return ld;
+    }
+
     /**
      * Build the drawable for a given cache.
      *
@@ -321,6 +482,12 @@ public final class MapMarkerUtils {
     @NonNull
     public static LayerDrawable createCacheDotMarker(final Resources res, final Geocache cache) {
         final Drawable[] layers = { Compatibility.getDrawable(res, cache.isFound() ? R.drawable.dot_found : cache.getType().dotMarkerId) };
+        return new LayerDrawable(layers);
+    }
+
+    @NonNull
+    public static LayerDrawable createCacheDotMarker(final Resources res, final cgeo.geocaching.persistence.entities.Geocache cache) {
+        final Drawable[] layers = { Compatibility.getDrawable(res, cache.found ? R.drawable.dot_found : cache.cacheType.dotMarkerId) };
         return new LayerDrawable(layers);
     }
 
@@ -361,6 +528,10 @@ public final class MapMarkerUtils {
     private static boolean showUserModifiedCoords(final Geocache cache) {
 
         return cache.hasUserModifiedCoords() || cache.hasFinalDefined();
+    }
+
+    private static boolean showUserModifiedCoords(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return (cache.userModifiedCoordinates != null && cache.userModifiedCoordinates) || (cache.finalDefined != null && cache.finalDefined);
     }
 
     /**
@@ -411,6 +582,11 @@ public final class MapMarkerUtils {
             }
         }
         return value;
+    }
+
+    private static int getAssignedMarkers (final cgeo.geocaching.persistence.entities.Geocache cache) {
+        // TODO implementation, what does this even do?
+        return 0;
     }
 
 }

@@ -6,6 +6,7 @@ import cgeo.geocaching.persistence.CGeoDatabase;
 import cgeo.geocaching.persistence.dao.GeocacheDao;
 import cgeo.geocaching.persistence.entities.Geocache;
 import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
+import cgeo.geocaching.persistence.entities.GeocacheWithWaypoints;
 import cgeo.geocaching.persistence.entities.Waypoint;
 import cgeo.geocaching.persistence.util.DownloadStatus;
 import cgeo.geocaching.utils.Log;
@@ -33,8 +34,6 @@ public class GeocacheRepository {
     private static final ThreadPoolExecutor downloadExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, downloadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
     private MutableLiveData<DownloadStatus> downloadStatus;
     private Handler mainHandler;
-
-    private Viewport previousViewport;
 
     public GeocacheRepository(final Application application) {
         final CGeoDatabase db = CGeoDatabase.getDatabase(application);
@@ -95,12 +94,9 @@ public class GeocacheRepository {
 
     public LiveData<List<Geocache>> getCachesInViewport(final Viewport viewport, final boolean loadLiveCaches, final boolean activeCachesOnly, final boolean excludeOwnedCaches, final boolean excludeFoundCaches) {
         if (loadLiveCaches) {
-            if (mapMoved(previousViewport, viewport)) {
-                Log.d("Map Viewport moved, triggering a live caches download.");
-                // TODO implement rate limiting and cancellation of previous download task
-                previousViewport = viewport;
-                loadLiveCachesInViewport(viewport);
-            }
+            Log.d("Map Viewport moved, triggering a live caches download.");
+            // TODO implement rate limiting and cancellation of previous download task
+            loadLiveCachesInViewport(viewport);
         }
 
         return geocacheDao.getGeocachesInRectangle(
@@ -113,6 +109,26 @@ public class GeocacheRepository {
                 excludeFoundCaches
         );
     }
+
+    public LiveData<List<GeocacheWithWaypoints>> getCachesWithWaypointsInViewport(final Viewport viewport, final boolean loadLiveCaches, final boolean activeCachesOnly, final boolean excludeOwnedCaches, final boolean excludeFoundCaches) {
+        if (loadLiveCaches) {
+            Log.d("Map Viewport moved, triggering a live caches download.");
+            // TODO implement rate limiting and cancellation of previous download task
+            loadLiveCachesInViewport(viewport);
+        }
+
+        return geocacheDao.getGeocachesWithWaypointsInRectangle(
+                viewport.getLatitudeMin(),
+                viewport.getLongitudeMin(),
+                viewport.getLatitudeMax(),
+                viewport.getLongitudeMax(),
+                activeCachesOnly,
+                excludeOwnedCaches,
+                excludeFoundCaches
+        );
+    }
+
+
 
     private void setDownloadStatus(final DownloadStatus status) {
         mainHandler.post(() -> downloadStatus.setValue(status));
@@ -139,12 +155,5 @@ public class GeocacheRepository {
 
     public LiveData<List<Geocache>> getCachesByGeocode(final Set<String> geocodes) {
         return geocacheDao.getCachesByGeocode(geocodes);
-    }
-
-    private boolean mapMoved(final Viewport referenceViewport, final Viewport newViewport) {
-        if (previousViewport == null) {
-            return true;
-        }
-        return Math.abs(newViewport.getLatitudeSpan() - referenceViewport.getLatitudeSpan()) > 50e-6 || Math.abs(newViewport.getLongitudeSpan() - referenceViewport.getLongitudeSpan()) > 50e-6 || Math.abs(newViewport.center.getLatitude() - referenceViewport.center.getLatitude()) > referenceViewport.getLatitudeSpan() / 4 || Math.abs(newViewport.center.getLongitude() - referenceViewport.center.getLongitude()) > referenceViewport.getLongitudeSpan() / 4;
     }
 }

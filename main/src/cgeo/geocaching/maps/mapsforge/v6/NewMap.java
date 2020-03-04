@@ -127,6 +127,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
     private NavigationLayer navigationLayer;
     private CachesBundle caches;
     private final MapHandlers mapHandlers = new MapHandlers(new TapHandler(this), new DisplayHandler(this), new ShowProgressHandler(this));
+    private Handler mainHandler;
 
     private XmlRenderThemeStyleMenu styleMenu;
     private SharedPreferences sharedPreferences;
@@ -171,6 +172,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
     public static final int UPDATE_PROGRESS = 0;
     public static final int FINISHED_LOADING_DETAILS = 1;
 
+    private Viewport previousViewport;
     private MapViewModel mapViewModel;
 
     @Override
@@ -236,6 +238,8 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
         final DragHandler dragHandler = new DragHandler(this);
         mapView.setOnMapDragListener(dragHandler);
 
+        mapViewModel.setMapMode(mapOptions.mapMode);
+
         // prepare initial settings of mapView
         if (mapOptions.mapState != null) {
             this.mapView.getModel().mapViewPosition.setCenter(MapsforgeUtils.toLatLong(mapOptions.mapState.getCenter()));
@@ -268,6 +272,20 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
         }
         prepareFilterBar();
         Routing.connect();
+
+        mainHandler = new Handler(getMainLooper());
+
+
+        mapView.getModel().mapViewPosition.addObserver(() -> {
+            if (previousViewport == null || mapMoved(previousViewport, mapView.getViewport())) {
+                previousViewport = mapView.getViewport();
+                mainHandler.post(this::updateViewport);
+            }
+        });
+
+        mapViewModel.getVisibleGeocaches().observe(this, c -> {
+            mapViewModel.showWaypoints(mapView.getViewport(), c.size() <= Settings.getWayPointsThreshold());
+        });
     }
 
     private void postZoomToViewport(final Viewport viewport) {
@@ -391,8 +409,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 if (mapOptions.mapMode == MapMode.LIVE) {
                     Settings.setLiveMap(mapOptions.isLiveEnabled);
                 }
-                caches.enableStoredLayers(mapOptions.isStoredEnabled);
-                caches.handleLiveLayers(mapOptions.isLiveEnabled);
+                caches.handleLiveLayers(mapViewModel.getVisibleGeocaches(), mapViewModel.getDownloadStatus(), this);
                 ActivityMixin.invalidateOptionsMenu(this);
                 if (mapOptions.mapMode != MapMode.SINGLE) {
                     mapOptions.title = StringUtils.EMPTY;
@@ -806,10 +823,9 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
             caches = new CachesBundle(this.mapView, this.mapHandlers);
         }
 
-        // Stored enabled map
-        caches.enableStoredLayers(mapOptions.isStoredEnabled);
-        // Live enabled map
-        caches.handleLiveLayers(mapOptions.isLiveEnabled);
+        // Live Data enabled map
+        caches.handleLiveLayers(mapViewModel.getVisibleGeocaches(), mapViewModel.getDownloadStatus(), this);
+        caches.handleWaypointLayer(mapViewModel.getVisibleWaypoints(), this);
 
         // Position layer
         this.positionLayer = new PositionLayer();
@@ -1391,15 +1407,10 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
                 NewMap.followMyLocation = false;
                 map.switchMyLocationButton();
             }
-            if (map != null) {
-                map.updateViewport();
-            }
         }
     }
 
     private void updateViewport() {
-        // TODO make sure that the latest viewport ends up beeing submitted, currently the last bit of movement doesn't trigger a download
-        // Somehow detect when the map has "settled"
         mapViewModel.setCurrentViewport(
                 mapView.getViewport(),
                 mapOptions.isLiveEnabled,
@@ -1675,5 +1686,9 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
             }
         }
 
+    }
+
+    static boolean mapMoved(final Viewport referenceViewport, final Viewport newViewport) {
+        return Math.abs(newViewport.getLatitudeSpan() - referenceViewport.getLatitudeSpan()) > 50e-6 || Math.abs(newViewport.getLongitudeSpan() - referenceViewport.getLongitudeSpan()) > 50e-6 || Math.abs(newViewport.center.getLatitude() - referenceViewport.center.getLatitude()) > referenceViewport.getLatitudeSpan() / 4 || Math.abs(newViewport.center.getLongitude() - referenceViewport.center.getLongitude()) > referenceViewport.getLongitudeSpan() / 4;
     }
 }

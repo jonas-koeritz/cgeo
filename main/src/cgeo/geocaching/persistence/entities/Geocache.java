@@ -1,22 +1,24 @@
 package cgeo.geocaching.persistence.entities;
 
-import cgeo.geocaching.enumerations.CacheAttribute;
+import cgeo.geocaching.connector.ConnectorFactory;
+import cgeo.geocaching.connector.IConnector;
+import cgeo.geocaching.connector.gc.GCConnector;
 import cgeo.geocaching.enumerations.CacheSize;
 import cgeo.geocaching.enumerations.CacheType;
+import cgeo.geocaching.enumerations.CoordinatesType;
 import cgeo.geocaching.location.Geopoint;
+import cgeo.geocaching.maps.mapsforge.v6.caches.GeoitemRef;
 
 import androidx.annotation.NonNull;
 import androidx.room.Embedded;
 import androidx.room.Entity;
-import androidx.room.ForeignKey;
 import androidx.room.PrimaryKey;
+
+import org.apache.commons.lang3.BooleanUtils;
 
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
-
-import static androidx.room.ForeignKey.CASCADE;
-
 
 @Entity(
         tableName = "geocaches"
@@ -105,6 +107,8 @@ public class Geocache {
     // Has the user modified the caches coordinates?
     public Boolean userModifiedCoordinates;
 
+    public Boolean finalDefined;
+
     // Does the cache require a password to submit a new log?
     public Boolean logPasswordRequired;
 
@@ -117,6 +121,23 @@ public class Geocache {
 
     // Have all available details been downloaded yet?
     public Boolean detailed;
+
+    @NonNull
+    private IConnector getConnector() {
+        return ConnectorFactory.getConnector(geocode);
+    }
+
+    public GeoitemRef getGeoitemRef() {
+        return new GeoitemRef(geocode, CoordinatesType.CACHE, geocode, 0, name, cacheType.markerId);
+    }
+
+    public boolean applyDistanceRule() {
+        return (cacheType.applyDistanceRule() || BooleanUtils.isTrue(userModifiedCoordinates)) && getConnector() == GCConnector.getInstance();
+    }
+
+    public int getMapMarkerId() {
+        return getConnector().getCacheMapMarkerId(BooleanUtils.isTrue(disabled) || BooleanUtils.isTrue(archived));
+    }
 
     /**
      * LiveCache is used to update the subset of information gathered
@@ -186,6 +207,7 @@ public class Geocache {
         this.archived = cache.isArchived();
         this.premiumMembersOnly = cache.isPremiumMembersOnly();
         this.userModifiedCoordinates = cache.hasUserModifiedCoords();
+        this.finalDefined = cache.hasFinalDefined();
         this.logPasswordRequired = cache.isLogPasswordRequired();
         this.attributes = new HashSet<>(cache.getAttributes());
         this.offline = cache.isOffline();

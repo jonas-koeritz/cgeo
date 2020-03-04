@@ -129,6 +129,35 @@ public abstract class AbstractCachesOverlay {
         }
     }
 
+    // TODO the update function is the cause of markers not getting updated
+    // the markers will not be redrawn until they have been scrolled out of and into the viewport
+    protected void update(final List<cgeo.geocaching.persistence.entities.Geocache> cachesToDisplay) {
+        final Collection<String> removeCodes = getGeocodes();
+        final Collection<String> newCodes = new HashSet<>();
+        if (!cachesToDisplay.isEmpty()) {
+            final boolean isDotMode = Settings.isDotMode();
+            Log.d(String.format(Locale.ENGLISH, "Cache Entities to display: %d", cachesToDisplay.size()));
+            for (final cgeo.geocaching.persistence.entities.Geocache c : cachesToDisplay) {
+                if (c == null) {
+                    continue;
+                }
+
+                if (c.getCoordinates() == null) {
+                    continue;
+                }
+
+                if (removeCodes.contains(c.geocode)) {
+                    removeCodes.remove(c.geocode);
+                } else if (addItem(c, isDotMode)) {
+                    newCodes.add(c.geocode);
+                }
+            }
+        }
+
+        syncLayers(removeCodes, newCodes);
+        repaint();
+    }
+
     protected void update(final Set<Geocache> cachesToDisplay) {
 
         final Collection<String> removeCodes = getGeocodes();
@@ -180,7 +209,34 @@ public abstract class AbstractCachesOverlay {
         return false;
     }
 
+    protected final boolean addItem(final cgeo.geocaching.persistence.entities.Geocache cache, final boolean isDotMode) {
+        final GeoEntry entry = new GeoEntry(cache.geocode, overlayId);
+        if (geoEntries.add(entry)) {
+            layerList.add(getCacheItem(cache, this.mapHandlers.getTapHandler(), isDotMode));
+            Log.d(String.format(Locale.ENGLISH, "Cache %s for id %d added, geoEntries: %d", entry.geocode, overlayId, geoEntries.size()));
+            return true;
+        }
+        Log.d(String.format(Locale.ENGLISH, "Cache %s for id %d not added, geoEntries: %d", entry.geocode, overlayId, geoEntries.size()));
+        return false;
+    }
+
     protected final boolean addItem(final Waypoint waypoint, final boolean isDotMode) {
+        final GeoEntry entry = new GeoEntry(waypoint.getGpxId(), overlayId);
+        final GeoitemLayer waypointItem = getWaypointItem(waypoint, this.mapHandlers.getTapHandler(), isDotMode);
+        if (waypointItem != null && geoEntries.add(entry)) {
+            layerList.add(waypointItem);
+
+            Log.d(String.format(Locale.ENGLISH, "Waypoint %s for id %d added, geoEntries: %d", entry.geocode, overlayId, geoEntries.size()));
+
+            return true;
+        }
+
+        Log.d(String.format(Locale.ENGLISH, "Waypoint %s for id %d not added, geoEntries: %d", entry.geocode, overlayId, geoEntries.size()));
+
+        return false;
+    }
+
+    protected final boolean addItem(final cgeo.geocaching.persistence.entities.Waypoint waypoint, final boolean isDotMode) {
         final GeoEntry entry = new GeoEntry(waypoint.getGpxId(), overlayId);
         final GeoitemLayer waypointItem = getWaypointItem(waypoint, this.mapHandlers.getTapHandler(), isDotMode);
         if (waypointItem != null && geoEntries.add(entry)) {
@@ -355,6 +411,17 @@ public abstract class AbstractCachesOverlay {
         return new GeoitemLayer(cache.getGeoitemRef(), cache.applyDistanceRule(), tapHandler, new LatLong(target.getLatitude(), target.getLongitude()), marker, 0, -marker.getHeight() / 2);
     }
 
+    private static GeoitemLayer getCacheItem(final cgeo.geocaching.persistence.entities.Geocache cache, final TapHandler tapHandler, final boolean isDotMode) {
+        final Geopoint target = cache.getCoordinates();
+        Bitmap marker = null;
+        if (isDotMode) {
+            marker = AndroidGraphicFactory.convertToBitmap(MapMarkerUtils.createCacheDotMarker(CgeoApplication.getInstance().getResources(), cache));
+        } else {
+            marker = AndroidGraphicFactory.convertToBitmap(MapMarkerUtils.getCacheMarker(CgeoApplication.getInstance().getResources(), cache).getDrawable());
+        }
+        return new GeoitemLayer(cache.getGeoitemRef(), cache.applyDistanceRule(), tapHandler, new LatLong(target.getLatitude(), target.getLongitude()), marker, 0, -marker.getHeight() / 2);
+    }
+
     private static GeoitemLayer getWaypointItem(final Waypoint waypoint, final TapHandler tapHandler, final boolean isDotMode) {
         final Geopoint target = waypoint.getCoords();
         if (target != null) {
@@ -369,6 +436,22 @@ public abstract class AbstractCachesOverlay {
 
         return null;
     }
+
+    private static GeoitemLayer getWaypointItem(final cgeo.geocaching.persistence.entities.Waypoint waypoint, final TapHandler tapHandler, final boolean isDotMode) {
+        final Geopoint target = waypoint.getCoordinates();
+        if (target != null) {
+            Bitmap marker = null;
+            if (isDotMode) {
+                marker = AndroidGraphicFactory.convertToBitmap(MapMarkerUtils.createWaypointDotMarker(CgeoApplication.getInstance().getResources(), waypoint));
+            } else {
+                marker = AndroidGraphicFactory.convertToBitmap(MapMarkerUtils.getWaypointMarker(CgeoApplication.getInstance().getResources(), waypoint).getDrawable());
+            }
+            return new GeoitemLayer(waypoint.getGeoitemRef(), waypoint.waypointType.applyDistanceRule(), tapHandler, new LatLong(target.getLatitude(), target.getLongitude()), marker, 0, -marker.getHeight() / 2);
+        }
+
+        return null;
+    }
+
 
     public WaypointDistanceInfo getClosestDistanceInM(final Geopoint coord) {
         int minDistance = 50000000;

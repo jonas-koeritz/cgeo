@@ -1,11 +1,19 @@
 package cgeo.geocaching.persistence.entities;
 
+import cgeo.geocaching.connector.ConnectorFactory;
+import cgeo.geocaching.connector.IConnector;
+import cgeo.geocaching.enumerations.CoordinatesType;
+import cgeo.geocaching.enumerations.LoadFlags;
 import cgeo.geocaching.enumerations.WaypointType;
 import cgeo.geocaching.location.Geopoint;
+import cgeo.geocaching.maps.mapsforge.v6.caches.GeoitemRef;
 import cgeo.geocaching.models.Geocache;
+import cgeo.geocaching.storage.DataStore;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,8 +26,9 @@ public class Waypoint {
     public String geocache;
 
     public String name;
+    public String prefix;
 
-    public WaypointType waypointType;
+    public WaypointType waypointType = WaypointType.WAYPOINT;
 
     public Double latitude;
     public Double longitude;
@@ -65,6 +74,7 @@ public class Waypoint {
         }
         this.geocache = wp.getGeocode();
         this.name = wp.getName();
+        this.prefix = wp.getPrefix();
         this.waypointType = wp.getWaypointType();
         if (wp.getCoords() != null) {
             this.latitude = wp.getCoords().getLatitude();
@@ -75,5 +85,14 @@ public class Waypoint {
         this.visited = wp.isVisited();
         this.userDefined = wp.isUserDefined();
         this.originalCoordinatesEmpty = wp.isOriginalCoordsEmpty();
+    }
+
+    public String getGpxId() {
+        final IConnector connector = ConnectorFactory.getConnector(geocache);
+        return connector.getWaypointGpxId(prefix, geocache);
+    }
+
+    public GeoitemRef getGeoitemRef() {
+        return new GeoitemRef(getGpxId(), CoordinatesType.WAYPOINT, geocache, (int) waypointId, name, waypointType.markerId);
     }
 }

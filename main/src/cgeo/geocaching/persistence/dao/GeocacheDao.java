@@ -3,6 +3,7 @@ package cgeo.geocaching.persistence.dao;
 import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.Geocache;
 import cgeo.geocaching.persistence.entities.GeocacheListCrossRef;
+import cgeo.geocaching.persistence.entities.GeocacheWithWaypoints;
 import cgeo.geocaching.persistence.entities.Waypoint;
 import cgeo.geocaching.utils.Log;
 
@@ -41,7 +42,6 @@ public abstract class GeocacheDao {
         final long id = insert(geocache);
         if (id == -1) { // Already existed
             update(geocache);
-            Log.d(String.format("GeocacheDao\tUpdated Geocache %s", geocache.geocode));
         }
     }
 
@@ -60,7 +60,6 @@ public abstract class GeocacheDao {
         final long id = insert(geocache);
         if (id == -1) { // Already existed
             update(geocache);
-            Log.d(String.format("GeocacheDao\tUpdated Geocache %s", geocache.geocode));
         }
     }
 
@@ -78,7 +77,6 @@ public abstract class GeocacheDao {
         final long id = insert(waypoint);
         if (id == -1) { // Already existed
             update(waypoint);
-            Log.d(String.format("GeocacheDao\tUpdated Waypoint %s@%s", waypoint.name, waypoint.geocache));
         }
     }
 
@@ -97,9 +95,18 @@ public abstract class GeocacheDao {
     @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
     public abstract LiveData<Geocache> getGeocacheByGeocode(String geocode);
 
-    @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND ((NOT :activeCachesOnly) OR (disabled = 0)) AND (archived = 0) AND NOT (:excludeOwnedCaches AND userIsOwner) AND NOT (:excludeFoundCaches AND found)")
+    @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND NOT (:activeCachesOnly AND disabled = 1) AND NOT (:activeCachesOnly AND archived = 1) AND NOT (:excludeOwnedCaches AND userIsOwner = 1) AND NOT (:excludeFoundCaches AND (found IS NOT NULL) AND found = 1) LIMIT 500")
     public abstract LiveData<List<Geocache>> getGeocachesInRectangle(double minLat, double minLon, double maxLat, double maxLon, boolean activeCachesOnly, boolean excludeOwnedCaches, boolean excludeFoundCaches);
 
     @Query("SELECT * FROM geocaches WHERE geocode IN (:geocodes)")
     public abstract LiveData<List<Geocache>> getCachesByGeocode(Set<String> geocodes);
+
+    @Transaction
+    @Query("SELECT * FROM geocaches WHERE geocode IN (:geocodes)")
+    public abstract LiveData<List<GeocacheWithWaypoints>> getCachesWithWaypointsByGeocode(Set<String> geocodes);
+
+    @Transaction
+    @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND NOT (:activeCachesOnly AND disabled) AND NOT (:activeCachesOnly AND archived) AND NOT (:excludeOwnedCaches AND userIsOwner) AND NOT (:excludeFoundCaches AND (found IS NOT NULL) AND found = 1) LIMIT 500")
+    public abstract LiveData<List<GeocacheWithWaypoints>> getGeocachesWithWaypointsInRectangle(double minLat, double minLon, double maxLat, double maxLon, boolean activeCachesOnly, boolean excludeOwnedCaches, boolean excludeFoundCaches);
+
 }

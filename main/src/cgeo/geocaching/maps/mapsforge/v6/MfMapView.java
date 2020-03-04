@@ -106,8 +106,12 @@ public class MfMapView extends MapView {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(final MotionEvent ev) {
-        gestureDetector.onTouchEvent(ev);
-        return super.onTouchEvent(ev);
+        try {
+            gestureDetector.onTouchEvent(ev);
+            return super.onTouchEvent(ev);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return false;
+        }
     }
 
     private class GestureListener extends SimpleOnGestureListener {
