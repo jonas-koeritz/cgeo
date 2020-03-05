@@ -5,23 +5,17 @@ import android.app.Application;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
-
-import org.mapsforge.map.datastore.Way;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.maps.MapMode;
 import cgeo.geocaching.persistence.entities.Geocache;
-import cgeo.geocaching.persistence.entities.GeocacheWithWaypoints;
 import cgeo.geocaching.persistence.entities.Waypoint;
 import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.persistence.repositories.WaypointRepository;
 import cgeo.geocaching.persistence.util.DownloadStatus;
-import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.utils.Log;
 
 import static cgeo.geocaching.maps.MapMode.LIST;
@@ -136,8 +130,12 @@ public class MapViewModel extends AndroidViewModel {
         return geocacheRepository.getGeocacheByGeocode(geocode);
     }
 
-    public LiveData<DownloadStatus> loadCacheDetails(final String geocode, final boolean forceDownload) {
-        return geocacheRepository.loadGeocacheDetails(geocode, forceDownload);
+    public LiveData<Geocache> getGeocacheByGeocode(final String geocode, final Geocache.DetailLevel detailLevel, boolean forceDownload) {
+        return geocacheRepository.getGeocacheByGeocode(geocode, detailLevel, forceDownload);
+    }
+
+    public LiveData<DownloadStatus> getDownloadStatus(final String geocode) {
+        return geocacheRepository.getDownloadStatus(geocode);
     }
 
     public void setGeocacheList(final List<String> geocodes) {

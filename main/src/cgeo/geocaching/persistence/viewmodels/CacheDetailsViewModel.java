@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 
 import cgeo.geocaching.persistence.entities.Geocache;
 import cgeo.geocaching.persistence.repositories.GeocacheRepository;
+import cgeo.geocaching.persistence.util.DownloadStatus;
 
 public class CacheDetailsViewModel extends AndroidViewModel {
     private GeocacheRepository geocacheRepository;
@@ -19,5 +20,13 @@ public class CacheDetailsViewModel extends AndroidViewModel {
 
     public LiveData<Geocache> getGeocacheByGeocode(final String geocode) {
         return geocacheRepository.getGeocacheByGeocode(geocode);
+    }
+
+    public LiveData<Geocache> getGeocacheByGeocode(final String geocode, final Geocache.DetailLevel detailLevel, boolean forceDownload) {
+        return geocacheRepository.getGeocacheByGeocode(geocode, detailLevel, forceDownload);
+    }
+
+    public LiveData<DownloadStatus> getDownloadStatus(final String geocode) {
+        return geocacheRepository.getDownloadStatus(geocode);
     }
 }

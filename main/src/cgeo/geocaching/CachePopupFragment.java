@@ -49,8 +49,18 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
 
         if (getArguments() != null) {
             if (getArguments().getString(GEOCODE_ARG) != null) {
-                geocache = cacheDetailsViewModel.getGeocacheByGeocode(getArguments().getString(GEOCODE_ARG));
+                geocache = cacheDetailsViewModel.getGeocacheByGeocode(getArguments().getString(GEOCODE_ARG), cgeo.geocaching.persistence.entities.Geocache.DetailLevel.POPUP, false);
                 geocache.observe(this, this::updateCacheData);
+                cacheDetailsViewModel.getDownloadStatus(getArguments().getString(GEOCODE_ARG)).observe(this, status -> {
+                    switch (status.status) {
+                        case LOADING:
+                            progress.setMessage(status.message);
+                            break;
+                        case SUCCESS:
+                        case ERROR:
+                            progress.dismiss();
+                    }
+                });
             }
         }
     }
@@ -90,6 +100,7 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
         return f;
     }
 
+    // TODO use full detail download from repository
     private static class StoreCacheHandler extends DisposableHandler {
         private final int progressMessage;
         private final WeakReference<CachePopupFragment> popupRef;
@@ -99,17 +110,6 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
             popupRef = new WeakReference<>(popup);
         }
 
-        @Override
-        public void handleRegularMessage(final Message msg) {
-            if (msg.what == UPDATE_LOAD_PROGRESS_DETAIL && msg.obj instanceof String) {
-                updateStatusMsg((String) msg.obj);
-            } else {
-                final CachePopupFragment popup = popupRef.get();
-                if (popup != null) {
-                    popup.init();
-                }
-            }
-        }
 
         private void updateStatusMsg(final String msg) {
             final CachePopupFragment popup = popupRef.get();
@@ -119,6 +119,11 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
             popup.progress.setMessage(popup.getString(progressMessage)
                     + "\n\n"
                     + msg);
+        }
+
+        @Override
+        protected void handleRegularMessage(final Message message) {
+
         }
     }
 
@@ -146,42 +151,6 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
     }
 
     @Override
-    protected void init() {
-        super.init();
-        if (null != proximityNotification) {
-            proximityNotification.setReferencePoint(cache.getCoords());
-            proximityNotification.setTextNotifications(getContext());
-        }
-
-        try {
-            if (StringUtils.isNotBlank(cache.getName())) {
-                setTitle(TextUtils.coloredCacheText(cache, cache.getName()));
-            } else {
-                setTitle(geocode);
-            }
-
-            final View view = getView();
-            assert view != null;
-            final TextView titleView = view.findViewById(R.id.actionbar_title);
-            titleView.setCompoundDrawablesWithIntrinsicBounds(Compatibility.getDrawable(getResources(), cache.getType().markerId), null, null, null);
-
-            final LinearLayout layout = view.findViewById(R.id.details_list);
-            details = new CacheDetailsCreator(getActivity(), layout);
-
-            // offline use
-            CacheDetailActivity.updateOfflineBox(view, cache, res, new RefreshCacheClickListener(), new DropCacheClickListener(), new StoreCacheClickListener(), new ShowHintClickListener(view), null, new StoreCacheClickListener());
-
-            CacheDetailActivity.updateCacheLists(view, cache, res);
-
-        } catch (final Exception e) {
-            Log.e("CachePopupFragment.init", e);
-        }
-
-        // cache is loaded. remove progress-popup if any there
-        progress.dismiss();
-    }
-
-    @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         if (super.onOptionsItemSelected(item)) {
             return true;
@@ -204,13 +173,6 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
     public void onDestroy() {
         SpeechService.stopService(getActivity());
         super.onDestroy();
-    }
-
-    @Override
-    public void onConfigurationChanged(final Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-
-        init();
     }
 
     private class StoreCacheClickListener implements View.OnClickListener, View.OnLongClickListener {

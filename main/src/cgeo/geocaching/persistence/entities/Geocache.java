@@ -254,4 +254,17 @@ public class Geocache implements ICoordinates {
         POPUP,
         FULL
     }
+
+
+    public static class RatingUpdate {
+        public String geocode;
+        public double rating;
+        public int votes;
+
+        public RatingUpdate(final String geocode, final double rating, final int votes) {
+            this.geocode = geocode;
+            this.rating = rating;
+            this.votes = votes;
+        }
+    }
 }

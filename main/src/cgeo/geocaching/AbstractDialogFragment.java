@@ -136,20 +136,6 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
         popupMenu.show();
     }
 
-    protected void init() {
-
-        cache = DataStore.loadCache(geocode, LoadFlags.LOAD_CACHE_OR_DB);
-
-        if (cache == null) {
-            ((AbstractActivity) getActivity()).showToast(res.getString(R.string.err_detail_cache_find));
-
-            getActivity().finish();
-            return;
-        }
-
-        geocode = cache.getGeocode();
-    }
-
     @Override
     public void onResume() {
         super.onResume();
@@ -162,7 +148,6 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
                 resumeDisposables.add(geoUpdate.start(GeoDirHandler.UPDATE_GEODATA));
             }
         });
-        init();
     }
 
 
@@ -253,10 +238,7 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
         // rating
         if (cache.rating != null && cache.rating > 0) {
             details.addRating(cache);
-        } else {
-            acquireGCVote();
         }
-
         // favorite count
         if (cache.favoritePoints != null &&  cache.favoritePoints >= 0) {
             // TODO get find counts
@@ -280,6 +262,14 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
 
         /* Only working combination as it seems */
         registerForContextMenu(buttonMore);
+
+        /*
+        TODO update lists and offline status
+        // offline use
+        CacheDetailActivity.updateOfflineBox(view, cache, res, new RefreshCacheClickListener(), new DropCacheClickListener(), new StoreCacheClickListener(), new ShowHintClickListener(view), null, new StoreCacheClickListener());
+
+        CacheDetailActivity.updateCacheLists(view, cache, res);
+         */
     }
 
     public final void showToast(final String text) {
@@ -338,7 +328,7 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
         if (CacheMenuHandler.onMenuItemSelected(item, this, cache)) {
             return true;
         }
-        if (LoggingUI.onMenuItemSelected(item, getActivity(), cache, dialog -> init())) {
+        if (LoggingUI.onMenuItemSelected(item, getActivity(), cache, null)) {
             return true;
         }
 

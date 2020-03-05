@@ -131,4 +131,6 @@ public abstract class GeocacheDao {
     @Query("SELECT * FROM geocaches WHERE (latitude >= :minLat AND latitude <= :maxLat) AND (longitude >= :minLon AND longitude <= :maxLon) AND NOT (:activeCachesOnly AND disabled) AND NOT (:activeCachesOnly AND archived) AND NOT (:excludeOwnedCaches AND userIsOwner) AND NOT (:excludeFoundCaches AND (found IS NOT NULL) AND found = 1) LIMIT 500")
     public abstract LiveData<List<GeocacheWithWaypoints>> getGeocachesWithWaypointsInRectangle(double minLat, double minLon, double maxLat, double maxLon, boolean activeCachesOnly, boolean excludeOwnedCaches, boolean excludeFoundCaches);
 
+    @Update(entity = Geocache.class)
+    public abstract void updateRating(Geocache.RatingUpdate update);
 }

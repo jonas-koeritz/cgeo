@@ -2,6 +2,7 @@ package cgeo.geocaching.persistence.util;
 
 public class DownloadStatus {
     public enum Status {
+        IDLE,
         SUCCESS,
         ERROR,
         LOADING
@@ -14,6 +15,12 @@ public class DownloadStatus {
     public DownloadStatus(final Status status, final String message) {
         this.status = status;
         this.message = message;
+    }
+
+    public DownloadStatus() {
+        this.status = Status.IDLE;
+        this.message = "";
+        this.error = null;
     }
 
     public static DownloadStatus Loading(final String message) {

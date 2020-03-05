@@ -7,6 +7,8 @@ import cgeo.geocaching.connector.gc.GCConnector;
 import cgeo.geocaching.connector.gc.GCMap;
 import cgeo.geocaching.enumerations.CacheType;
 import cgeo.geocaching.enumerations.LoadFlags;
+import cgeo.geocaching.gcvote.GCVote;
+import cgeo.geocaching.gcvote.GCVoteRating;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.persistence.CGeoDatabase;
 import cgeo.geocaching.persistence.dao.GeocacheDao;
@@ -27,6 +29,7 @@ import org.apache.commons.lang3.BooleanUtils;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -40,12 +43,10 @@ public class GeocacheRepository {
     private GeocacheDao geocacheDao;
 
     private static final BlockingQueue<Runnable> downloadQueue = new ArrayBlockingQueue<>(1);
-    private static final BlockingQueue<Runnable> databaseQueue = new ArrayBlockingQueue<>(1);
-
     private static final ThreadPoolExecutor downloadExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, downloadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
-    private static final ThreadPoolExecutor databaseExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, downloadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
 
     private MutableLiveData<DownloadStatus> downloadStatus;
+    private HashMap<String, MutableLiveData<DownloadStatus>> cacheDownloadStatus;
     private Handler mainHandler;
 
     public GeocacheRepository(final Application application) {
@@ -53,11 +54,19 @@ public class GeocacheRepository {
         geocacheDao = db.geocacheDao();
 
         downloadStatus = new MutableLiveData<>();
+        cacheDownloadStatus = new HashMap<>();
         mainHandler = new Handler(getMainLooper());
     }
 
     public LiveData<DownloadStatus> getDownloadStatus() {
         return downloadStatus;
+    }
+
+    public LiveData<DownloadStatus> getDownloadStatus(final String geocode) {
+        if (!cacheDownloadStatus.containsKey(geocode)) {
+           cacheDownloadStatus.put(geocode, new MutableLiveData<>(new DownloadStatus()));
+        }
+        return cacheDownloadStatus.get(geocode);
     }
 
     public void upsert(final Geocache geocache) {
@@ -151,6 +160,22 @@ public class GeocacheRepository {
         mainHandler.post(() -> downloadStatus.setValue(status));
     }
 
+    private void setDownloadStatus(final String geocode, final DownloadStatus status) {
+        mainHandler.post(() -> {
+            if (!cacheDownloadStatus.containsKey(geocode)) {
+                cacheDownloadStatus.put(geocode, new MutableLiveData<>(status));
+            } else {
+                if (cacheDownloadStatus.get(geocode) != null) {
+                    cacheDownloadStatus.get(geocode).postValue(status);
+                }
+            }
+
+            if (status.status == DownloadStatus.Status.SUCCESS || status.status == DownloadStatus.Status.ERROR) {
+                cacheDownloadStatus.remove(geocode);
+            }
+        });
+    }
+
     private void loadLiveCachesInViewport(final Viewport viewport) {
         // TODO indicate errors
         downloadExecutor.execute(() -> {
@@ -174,83 +199,87 @@ public class GeocacheRepository {
     }
 
     public LiveData<Geocache> getGeocacheByGeocode(final String geocode, final Geocache.DetailLevel detailLevel, final boolean forceUpdate) {
-        databaseExecutor.execute(() -> {
+        downloadExecutor.execute(() -> {
+            setDownloadStatus(geocode, DownloadStatus.Loading("Loading cache details"));
             final Geocache cache = geocacheDao.getGeoacheByGeocode(geocode);
             if (!hasDetailLevel(cache, detailLevel) || forceUpdate) {
                 loadDetails(geocode, detailLevel);
+                setDownloadStatus(geocode, DownloadStatus.Success("Done"));
             }
         });
 
         return geocacheDao.getGeocacheByGeocode(geocode);
     }
 
-    // TODO This doesn't currently really load cache details, just updates difficulty and terrain rating
-    // make this really download full cache details and find another way to update the other info
-    public LiveData<DownloadStatus> loadGeocacheDetails(final String geocode, final boolean forceDownload) {
-        final MutableLiveData<DownloadStatus> status = new MutableLiveData<>();
-        status.setValue(DownloadStatus.Loading(String.format("Loading cache details for geocache %s", geocode)));
-        downloadExecutor.execute(() -> {
-            final Geocache c = geocacheDao.getGeocacheByGeocodeSync(geocode);
-            if (c.difficulty == null || c.cacheType == null || c.difficulty == 0.0 || c.cacheType == CacheType.UNKNOWN || forceDownload) {
-                try {
-                    final IConnector connector = ConnectorFactory.getConnector(geocode);
-                    if (connector instanceof GCConnector) {
-                        final SearchResult result = GCMap.searchByGeocodes(Collections.singleton(geocode));
-                        // TODO remove dependency on the cacheCache
-                        for (cgeo.geocaching.models.Geocache cache : result.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
-                            upsert(new Geocache.GeocodeResult(cache));
-                        }
-                        status.postValue(DownloadStatus.Success("Finished loading cache details"));
-                    }
-                } catch (Exception e) {
-                    status.postValue(DownloadStatus.Error("Failed downloading cache details", e));
-                }
-            } else {
-                // Nothing to do here
-                status.postValue(DownloadStatus.Success("Skipped loading cache details"));
-            }
+    private void updateRating(final String geocode, final double rating, final int votes) {
+        CGeoDatabase.databaseWriteExecutor.execute(() -> {
+            geocacheDao.updateRating(new Geocache.RatingUpdate(geocode, rating, votes));
         });
-        return status;
+    }
+
+    private void loadPopupDetails(final String geocode) {
+        setDownloadStatus(geocode, DownloadStatus.Loading("Loading cache details"));
+        try {
+            final IConnector connector = ConnectorFactory.getConnector(geocode);
+            if (connector instanceof GCConnector) {
+                final SearchResult result = GCMap.searchByGeocodes(Collections.singleton(geocode));
+                // TODO remove dependency on the cacheCache
+                for (cgeo.geocaching.models.Geocache cache : result.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
+                    upsert(new Geocache.GeocodeResult(cache));
+                }
+                setDownloadStatus(geocode, DownloadStatus.Loading("Loading GCVote"));
+                final GCVoteRating rating = GCVote.getRating("", geocode);
+                if (rating != null) {
+                    updateRating(geocode, rating.getRating(), rating.getVotes());
+                }
+
+                setDownloadStatus(geocode, DownloadStatus.Success("Finished loading cache details"));
+            }
+        } catch (Exception e) {
+            setDownloadStatus(geocode, DownloadStatus.Error("Failed downloading cache details", e));
+        }
+    }
+
+    private void loadFullDetails(final String geocode) {
+        setDownloadStatus(geocode, DownloadStatus.Loading(String.format("Loading full cache details for geocache %s", geocode)));
     }
 
     public LiveData<List<Geocache>> getCachesByGeocode(final List<String> geocodes) {
         return geocacheDao.getCachesByGeocode(geocodes);
     }
 
-    public void loadDetails(final String geocode, final Geocache.DetailLevel level) {
-
-    }
-
-    private boolean hasDetailLevel(final Geocache cache, final Geocache.DetailLevel level) {
-        boolean result = true;
-
+    private void loadDetails(final String geocode, final Geocache.DetailLevel level) {
         switch (level) {
             case MAP:
-                result &= cache.latitude != null;
-                result &= cache.longitude != null;
-                result &= cache.cacheType != null;
-                result &= cache.archived != null;
-                result &= cache.disabled != null;
-                result &= cache.owner != null;
-                if (!result) {
+                // There shouldn't be any caches that do not conform to MAP level
+                setDownloadStatus(geocode, DownloadStatus.Success(""));
+                return;
+            case POPUP:
+                loadPopupDetails(geocode);
+                return;
+            case FULL:
+                loadFullDetails(geocode);
+        }
+    }
+
+
+
+    private boolean hasDetailLevel(final Geocache cache, final Geocache.DetailLevel level) {
+        switch (level) {
+            case FULL:
+                if (!(cache.description != null && cache.attributes != null)) {
                     return false;
                 }
             case POPUP:
-                result &= cache.name != null;
-                result &= cache.rating != null;
-                result &= cache.size != null;
-                result &= cache.votes != null;
-                result &= cache.terrain != null;
-                result &= cache.difficulty != null;
-                result &= cache.favoritePoints != null;
-                if (!result) {
+                if (!(cache.name != null && cache.rating != null && cache.size != null && cache.votes != null && cache.terrain != null && cache.difficulty != null && cache.favoritePoints != null)) {
                     return false;
                 }
-            case FULL:
-                result &= cache.description != null;
-                result &= cache.attributes != null;
+            case MAP:
+                if (!(cache.latitude != null && cache.longitude != null && cache.cacheType != null && cache.archived != null && cache.disabled != null && cache.owner != null)) {
+                    return false;
+                }
         }
 
-        return result;
+        return true;
     }
 }
