@@ -248,4 +248,10 @@ public class Geocache implements ICoordinates {
     public boolean showSize() {
         return !(size == CacheSize.NOT_CHOSEN || cacheType.isEvent() || cacheType.isVirtual());
     }
+
+    public enum DetailLevel {
+        MAP,
+        POPUP,
+        FULL
+    }
 }

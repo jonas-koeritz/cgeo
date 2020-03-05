@@ -40,7 +40,11 @@ public class GeocacheRepository {
     private GeocacheDao geocacheDao;
 
     private static final BlockingQueue<Runnable> downloadQueue = new ArrayBlockingQueue<>(1);
+    private static final BlockingQueue<Runnable> databaseQueue = new ArrayBlockingQueue<>(1);
+
     private static final ThreadPoolExecutor downloadExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, downloadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
+    private static final ThreadPoolExecutor databaseExecutor = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, downloadQueue, new ThreadPoolExecutor.DiscardOldestPolicy());
+
     private MutableLiveData<DownloadStatus> downloadStatus;
     private Handler mainHandler;
 
@@ -169,6 +173,19 @@ public class GeocacheRepository {
         return geocacheDao.getGeocacheByGeocode(geocode);
     }
 
+    public LiveData<Geocache> getGeocacheByGeocode(final String geocode, final Geocache.DetailLevel detailLevel, final boolean forceUpdate) {
+        databaseExecutor.execute(() -> {
+            final Geocache cache = geocacheDao.getGeoacheByGeocode(geocode);
+            if (!hasDetailLevel(cache, detailLevel) || forceUpdate) {
+                loadDetails(geocode, detailLevel);
+            }
+        });
+
+        return geocacheDao.getGeocacheByGeocode(geocode);
+    }
+
+    // TODO This doesn't currently really load cache details, just updates difficulty and terrain rating
+    // make this really download full cache details and find another way to update the other info
     public LiveData<DownloadStatus> loadGeocacheDetails(final String geocode, final boolean forceDownload) {
         final MutableLiveData<DownloadStatus> status = new MutableLiveData<>();
         status.setValue(DownloadStatus.Loading(String.format("Loading cache details for geocache %s", geocode)));
@@ -198,5 +215,42 @@ public class GeocacheRepository {
 
     public LiveData<List<Geocache>> getCachesByGeocode(final List<String> geocodes) {
         return geocacheDao.getCachesByGeocode(geocodes);
+    }
+
+    public void loadDetails(final String geocode, final Geocache.DetailLevel level) {
+
+    }
+
+    private boolean hasDetailLevel(final Geocache cache, final Geocache.DetailLevel level) {
+        boolean result = true;
+
+        switch (level) {
+            case MAP:
+                result &= cache.latitude != null;
+                result &= cache.longitude != null;
+                result &= cache.cacheType != null;
+                result &= cache.archived != null;
+                result &= cache.disabled != null;
+                result &= cache.owner != null;
+                if (!result) {
+                    return false;
+                }
+            case POPUP:
+                result &= cache.name != null;
+                result &= cache.rating != null;
+                result &= cache.size != null;
+                result &= cache.votes != null;
+                result &= cache.terrain != null;
+                result &= cache.difficulty != null;
+                result &= cache.favoritePoints != null;
+                if (!result) {
+                    return false;
+                }
+            case FULL:
+                result &= cache.description != null;
+                result &= cache.attributes != null;
+        }
+
+        return result;
     }
 }
