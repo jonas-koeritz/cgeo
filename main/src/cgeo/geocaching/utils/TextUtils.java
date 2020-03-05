@@ -14,6 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import org.apache.commons.lang3.BooleanUtils;
+
 import java.nio.charset.Charset;
 import java.text.Collator;
 import java.util.regex.Matcher;
@@ -244,6 +246,17 @@ public final class TextUtils {
             span.setSpan(new StrikethroughSpan(), 0, span.toString().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (cache.isArchived()) {
+            span.setSpan(new ForegroundColorSpan(ContextCompat.getColor(CgeoApplication.getInstance(), R.color.archived_cache_color)), 0, span.toString().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return span;
+    }
+
+    public static SpannableString coloredCacheText(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache, @NonNull final String text) {
+        final SpannableString span = new SpannableString(text);
+        if (BooleanUtils.isTrue(cache.disabled) || BooleanUtils.isTrue(cache.archived)) { // strike
+            span.setSpan(new StrikethroughSpan(), 0, span.toString().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (BooleanUtils.isTrue(cache.archived)) {
             span.setSpan(new ForegroundColorSpan(ContextCompat.getColor(CgeoApplication.getInstance(), R.color.archived_cache_color)), 0, span.toString().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return span;

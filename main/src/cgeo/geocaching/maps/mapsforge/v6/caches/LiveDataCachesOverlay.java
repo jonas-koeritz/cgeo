@@ -45,7 +45,7 @@ public class LiveDataCachesOverlay extends AbstractCachesOverlay {
     }
 
     public boolean isDownloading() {
-        return downloadStatus.getValue() == DownloadStatus.LOADING;
+        return downloadStatus.getValue() != null && downloadStatus.getValue().status == DownloadStatus.Status.LOADING;
     }
 
     @Override

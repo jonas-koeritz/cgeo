@@ -143,7 +143,7 @@ public abstract class AbstractCachesOverlay {
                     continue;
                 }
 
-                if (c.getCoordinates() == null) {
+                if (c.getCoords() == null) {
                     continue;
                 }
 
@@ -413,7 +413,7 @@ public abstract class AbstractCachesOverlay {
     }
 
     private static GeoitemLayer getCacheItem(final cgeo.geocaching.persistence.entities.Geocache cache, final TapHandler tapHandler, final boolean isDotMode) {
-        final Geopoint target = cache.getCoordinates();
+        final Geopoint target = cache.getCoords();
         Bitmap marker = null;
         if (isDotMode) {
             marker = AndroidGraphicFactory.convertToBitmap(MapMarkerUtils.createCacheDotMarker(CgeoApplication.getInstance().getResources(), cache));

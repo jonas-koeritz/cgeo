@@ -11,6 +11,7 @@ import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.permission.PermissionHandler;
 import cgeo.geocaching.permission.PermissionRequestContext;
 import cgeo.geocaching.permission.RestartLocationPermissionGrantedCallback;
+import cgeo.geocaching.persistence.viewmodels.CacheDetailsViewModel;
 import cgeo.geocaching.sensors.GeoData;
 import cgeo.geocaching.sensors.GeoDirHandler;
 import cgeo.geocaching.settings.Settings;
@@ -33,10 +34,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.DialogFragment;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModelProvider;
 
 import io.reactivex.Maybe;
 import io.reactivex.disposables.CompositeDisposable;
@@ -53,6 +57,8 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
     protected static final String WAYPOINT_ARG = "WAYPOINT";
 
     protected Geocache cache;
+
+    protected CacheDetailsViewModel cacheDetailsViewModel;
 
     public static final int RESULT_CODE_SET_TARGET = Activity.RESULT_FIRST_USER;
     public static final int REQUEST_CODE_TARGET_INFO = 1;
@@ -78,6 +84,8 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
         super.onCreate(savedInstanceState);
         res = getResources();
         setHasOptionsMenu(true);
+
+        cacheDetailsViewModel = new ViewModelProvider(this).get(CacheDetailsViewModel.class);
     }
 
     protected void initCustomActionBar(final View v) {
@@ -129,6 +137,7 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
     }
 
     protected void init() {
+
         cache = DataStore.loadCache(geocode, LoadFlags.LOAD_CACHE_OR_DB);
 
         if (cache == null) {
@@ -210,6 +219,52 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
                 details.add(R.string.cache_favorite, res.getString(R.string.favorite_count_percent, favCount, (float) (favCount * 100) / findsCount));
             } else if (!cache.isEventCache()) {
                 details.add(R.string.cache_favorite, res.getString(R.string.favorite_count, favCount));
+            }
+        }
+
+        // more details
+        final View view = getView();
+        assert view != null;
+        final Button buttonMore = view.findViewById(R.id.more_details);
+
+        buttonMore.setOnClickListener(arg0 -> {
+            CacheDetailActivity.startActivity(getActivity(), geocode);
+            getActivity().finish();
+        });
+
+        /* Only working combination as it seems */
+        registerForContextMenu(buttonMore);
+    }
+
+    void addCacheDetails(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        final String cacheType = cache.cacheType.getL10n();
+        final String cacheSize = cache.showSize() ? " (" + cache.size.getL10n() + ")" : "";
+        details.add(R.string.cache_type, cacheType + cacheSize);
+
+        details.add(R.string.cache_geocode, cache.geocode);
+        details.addCacheState(cache);
+
+        cacheDistance = details.addDistance(cache, cacheDistance);
+
+        details.addDifficulty(cache);
+        details.addTerrain(cache);
+        details.addEventDate(cache);
+
+        // rating
+        if (cache.rating != null && cache.rating > 0) {
+            details.addRating(cache);
+        } else {
+            acquireGCVote();
+        }
+
+        // favorite count
+        if (cache.favoritePoints != null &&  cache.favoritePoints >= 0) {
+            // TODO get find counts
+            final int findsCount = 1;
+            if (findsCount > 0) {
+                details.add(R.string.cache_favorite, res.getString(R.string.favorite_count_percent,  cache.favoritePoints, (float) ( cache.favoritePoints * 100) / findsCount));
+            } else if (!(cache.cacheType != null && cache.cacheType.isEvent())) {
+                details.add(R.string.cache_favorite, res.getString(R.string.favorite_count,  cache.favoritePoints));
             }
         }
 

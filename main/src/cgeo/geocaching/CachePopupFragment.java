@@ -6,7 +6,6 @@ import cgeo.geocaching.compatibility.Compatibility;
 import cgeo.geocaching.list.StoredList;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.network.Network;
-import cgeo.geocaching.persistence.CGeoDatabase;
 import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.speech.SpeechService;
@@ -30,6 +29,7 @@ import android.widget.TextView;
 
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.LiveData;
 
 import java.lang.ref.WeakReference;
 import java.util.Collections;
@@ -40,6 +40,43 @@ import org.apache.commons.lang3.StringUtils;
 
 public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotification {
     private final Progress progress = new Progress();
+
+    protected LiveData<cgeo.geocaching.persistence.entities.Geocache> geocache;
+
+    @Override
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        if (getArguments() != null) {
+            if (getArguments().getString(GEOCODE_ARG) != null) {
+                geocache = cacheDetailsViewModel.getGeocacheByGeocode(getArguments().getString(GEOCODE_ARG));
+                geocache.observe(this, this::updateCacheData);
+            }
+        }
+    }
+
+    private void updateCacheData(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (null != proximityNotification) {
+            proximityNotification.setReferencePoint(cache.getCoords());
+            proximityNotification.setTextNotifications(getContext());
+        }
+
+        if (StringUtils.isNotBlank(cache.name)) {
+            setTitle(TextUtils.coloredCacheText(cache, cache.name));
+        } else {
+            setTitle(geocode);
+        }
+
+        final View view = getView();
+        assert view != null;
+        final TextView titleView = view.findViewById(R.id.actionbar_title);
+        titleView.setCompoundDrawablesWithIntrinsicBounds(Compatibility.getDrawable(getResources(), cache.cacheType.markerId), null, null, null);
+
+        final LinearLayout layout = view.findViewById(R.id.details_list);
+        details = new CacheDetailsCreator(getActivity(), layout);
+
+        addCacheDetails(cache);
+    }
 
     public static DialogFragment newInstance(final String geocode) {
 
@@ -130,8 +167,6 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
 
             final LinearLayout layout = view.findViewById(R.id.details_list);
             details = new CacheDetailsCreator(getActivity(), layout);
-
-            addCacheDetails();
 
             // offline use
             CacheDetailActivity.updateOfflineBox(view, cache, res, new RefreshCacheClickListener(), new DropCacheClickListener(), new StoreCacheClickListener(), new ShowHintClickListener(view), null, new StoreCacheClickListener());

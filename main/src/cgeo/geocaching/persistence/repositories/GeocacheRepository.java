@@ -151,7 +151,7 @@ public class GeocacheRepository {
         // TODO indicate errors
         downloadExecutor.execute(() -> {
             Log.d(String.format("Downloading Geocaches for Viewport: %s", viewport));
-            setDownloadStatus(DownloadStatus.LOADING);
+            setDownloadStatus(DownloadStatus.Loading(String.format("Downloading Geocaches for Viewport: %s", viewport)));
 
             // TODO call the different connectors on our own to get as much information as possible
             // relying on Geocache model Objects to do this hides the fact that OC and GC return different
@@ -161,7 +161,7 @@ public class GeocacheRepository {
                 upsert(new Geocache.LiveCache(c));
             }
 
-            setDownloadStatus(DownloadStatus.SUCCESS);
+            setDownloadStatus(DownloadStatus.Success("Finished downloading Geocaches"));
         });
     }
 
@@ -171,7 +171,7 @@ public class GeocacheRepository {
 
     public LiveData<DownloadStatus> loadGeocacheDetails(final String geocode, final boolean forceDownload) {
         final MutableLiveData<DownloadStatus> status = new MutableLiveData<>();
-        status.setValue(DownloadStatus.LOADING);
+        status.setValue(DownloadStatus.Loading(String.format("Loading cache details for geocache %s", geocode)));
         downloadExecutor.execute(() -> {
             final Geocache c = geocacheDao.getGeocacheByGeocodeSync(geocode);
             if (c.difficulty == null || c.cacheType == null || c.difficulty == 0.0 || c.cacheType == CacheType.UNKNOWN || forceDownload) {
@@ -183,17 +183,15 @@ public class GeocacheRepository {
                         for (cgeo.geocaching.models.Geocache cache : result.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
                             upsert(new Geocache.GeocodeResult(cache));
                         }
-                        status.postValue(DownloadStatus.SUCCESS);
+                        status.postValue(DownloadStatus.Success("Finished loading cache details"));
                     }
                 } catch (Exception e) {
-                    status.postValue(DownloadStatus.ERROR);
+                    status.postValue(DownloadStatus.Error("Failed downloading cache details", e));
                 }
             } else {
                 // Nothing to do here
-                status.postValue(DownloadStatus.SUCCESS);
+                status.postValue(DownloadStatus.Success("Skipped loading cache details"));
             }
-
-            status.postValue(DownloadStatus.SUCCESS);
         });
         return status;
     }

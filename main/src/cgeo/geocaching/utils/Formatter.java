@@ -311,6 +311,30 @@ public final class Formatter {
         return dateString;
     }
 
+    @Nullable
+    public static String formatHiddenDate(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        final Date hiddenDate = cache.hidden;
+        if (hiddenDate == null) {
+            return null;
+        }
+        final long time = hiddenDate.getTime();
+        if (time <= 0) {
+            return null;
+        }
+        String dateString = formatFullDate(time);
+        if (cache.cacheType != null && cache.cacheType.isEvent()) {
+            // use today and yesterday strings
+            final String verbally = formatDateVerbally(time);
+            if (verbally != null) {
+                return verbally;
+            }
+            // otherwise use weekday and normal date
+            dateString = DateUtils.formatDateTime(CgeoApplication.getInstance().getBaseContext(), time, DateUtils.FORMAT_SHOW_WEEKDAY) + ", " + dateString;
+        }
+        // use just normal date
+        return dateString;
+    }
+
     @NonNull
     public static String formatMapSubtitle(final Geocache cache) {
         return "D " + formatDT(cache.getDifficulty()) + SEPARATOR + "T " + formatDT(cache.getTerrain()) + SEPARATOR + cache.getGeocode();

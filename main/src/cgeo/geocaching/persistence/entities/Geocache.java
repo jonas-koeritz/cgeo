@@ -8,6 +8,7 @@ import cgeo.geocaching.enumerations.CacheType;
 import cgeo.geocaching.enumerations.CoordinatesType;
 import cgeo.geocaching.location.Geopoint;
 import cgeo.geocaching.maps.mapsforge.v6.caches.GeoitemRef;
+import cgeo.geocaching.models.ICoordinates;
 
 import androidx.annotation.NonNull;
 import androidx.room.Embedded;
@@ -23,7 +24,7 @@ import java.util.Set;
 @Entity(
         tableName = "geocaches"
 )
-public class Geocache {
+public class Geocache implements ICoordinates {
     // The unique geocode used to identify this cache
     @NonNull
     @PrimaryKey
@@ -53,6 +54,8 @@ public class Geocache {
     // The last time the user viewed this caches details page (can be used for history)
     public Date lastViewed;
 
+    public Date visited;
+
     // A hint given by the cache owner
     public String hint;
 
@@ -79,7 +82,8 @@ public class Geocache {
      * Creates a Geopoint with the coordinates of this geocache
      * @return Geopoint representing the location of this geocache
      */
-    public Geopoint getCoordinates() {
+    @Override
+    public Geopoint getCoords() {
         return new Geopoint(latitude, longitude);
     }
 
@@ -110,6 +114,9 @@ public class Geocache {
     public Boolean finalDefined;
 
     public Integer favoritePoints;
+
+    public Double rating;
+    public Integer votes;
 
     // Does the cache require a password to submit a new log?
     public Boolean logPasswordRequired;
@@ -235,5 +242,10 @@ public class Geocache {
         this.detailed = cache.isDetailed();
         this.found = cache.isFound();
         this.userIsOwner = cache.isOwner();
+        this.visited = new Date(cache.getVisitedDate());
+    }
+
+    public boolean showSize() {
+        return !(size == CacheSize.NOT_CHOSEN || cacheType.isEvent() || cacheType.isVirtual());
     }
 }

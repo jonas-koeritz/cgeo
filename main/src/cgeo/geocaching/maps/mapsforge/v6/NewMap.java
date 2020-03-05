@@ -82,7 +82,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 
 import java.io.File;
 import java.io.IOException;
@@ -183,7 +182,7 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
 
         Log.d("NewMap: onCreate");
 
-        mapViewModel = ViewModelProviders.of(this).get(MapViewModel.class);
+        mapViewModel = new ViewModelProvider(this).get(MapViewModel.class);
 
         ResourceBitmapCacheMonitor.addRef();
         AndroidGraphicFactory.createInstance(this.getApplication());
@@ -1504,12 +1503,12 @@ public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeM
             if (item.getType() == CoordinatesType.CACHE) {
                 final LiveData<DownloadStatus> detailsDownloadStatus = mapViewModel.loadCacheDetails(item.getGeocode(), false);
                 detailsDownloadStatus.observe(this, s -> {
-                    if (s == DownloadStatus.SUCCESS) {
+                    if (s.status == DownloadStatus.Status.SUCCESS) {
                         popupGeocodes.add(item.getGeocode());
                         // TODO CachePopUp doesn't yet know where to get it's data from
                         CachePopup.startActivityAllowTarget(this, item.getGeocode());
                         detailsDownloadStatus.removeObservers(this);
-                    } else if (s == DownloadStatus.ERROR) {
+                    } else if (s.status == DownloadStatus.Status.ERROR) {
                         Log.w("Error requesting cache popup info");
                         ActivityMixin.showToast(this, R.string.err_request_popup_info);
                         detailsDownloadStatus.removeObservers(this);

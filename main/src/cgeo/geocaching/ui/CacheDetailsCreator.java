@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
@@ -89,6 +90,10 @@ public final class CacheDetailsCreator {
         return addStars(nameId, value, 5);
     }
 
+    public RelativeLayout addStars(final int nameId, final double value) {
+        return addStars(nameId, value, 5);
+    }
+
     private RelativeLayout addStars(final int nameId, final float value, final int max) {
         final RelativeLayout layout = (RelativeLayout) activity.getLayoutInflater().inflate(R.layout.cache_information_item, null, false);
         final TextView nameView = layout.findViewById(R.id.name);
@@ -104,6 +109,10 @@ public final class CacheDetailsCreator {
 
         parentView.addView(layout);
         return layout;
+    }
+
+    private RelativeLayout addStars(final int nameId, final double value, final int max) {
+        return addStars(nameId, (float) value, max);
     }
 
     public void addCacheState(final Geocache cache) {
@@ -138,9 +147,49 @@ public final class CacheDetailsCreator {
         }
     }
 
+    public void addCacheState(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        final List<String> states = new ArrayList<>(5);
+        String date = getVisitedDate(cache);
+        /* TODO get the offline logging stuff working
+        if (cache.isLogOffline()) {
+            states.add(res.getString(R.string.cache_status_offline_log) + date);
+            // reset the found date, to avoid showing it twice
+            date = "";
+        }
+        */
+        if (BooleanUtils.isTrue(cache.found)) {
+            states.add(res.getString(R.string.cache_status_found) + date);
+        }
+        if ((cache.cacheType != null && cache.cacheType.isVirtual()) && states.isEmpty()) {
+            /* TODO get logging working
+            for (final LogEntry log : cache.getLogs()) {
+                if (log.getType() == LogType.WILL_ATTEND && log.isOwn()) {
+                    states.add(LogType.WILL_ATTEND.getL10n());
+                }
+            }
+            */
+        }
+        if (BooleanUtils.isTrue(cache.archived)) {
+            states.add(res.getString(R.string.cache_status_archived));
+        }
+        if (BooleanUtils.isTrue(cache.disabled)) {
+            states.add(res.getString(R.string.cache_status_disabled));
+        }
+        if (BooleanUtils.isTrue(cache.premiumMembersOnly)) {
+            states.add(res.getString(R.string.cache_status_premium));
+        }
+        if (!states.isEmpty()) {
+            add(R.string.cache_status, StringUtils.join(states, ", "));
+        }
+    }
+
     private static String getVisitedDate(final Geocache cache) {
         final long visited = cache.getVisitedDate();
         return visited != 0 ? " (" + Formatter.formatShortDate(visited) + ")" : "";
+    }
+
+    private static String getVisitedDate(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return cache.visited != null ? " (" + Formatter.formatShortDate(cache.visited.getTime()) + ")" : "";
     }
 
     private static Float distanceNonBlocking(final ICoordinates target) {
@@ -161,6 +210,17 @@ public final class CacheDetailsCreator {
         }
     }
 
+    public void addRating(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (cache.rating != null && cache.rating > 0) {
+            final RelativeLayout itemLayout = addStars(R.string.cache_rating, cache.rating);
+            if (cache.votes != null && cache.votes > 0) {
+                final TextView itemAddition = itemLayout.findViewById(R.id.addition);
+                itemAddition.setText(" (" + cache.votes + ')');
+                itemAddition.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
     public void addSize(final Geocache cache) {
         if (cache.showSize()) {
             add(R.string.cache_size, cache.getSize().getL10n());
@@ -173,9 +233,21 @@ public final class CacheDetailsCreator {
         }
     }
 
+    public void addDifficulty(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (cache.difficulty != null && cache.difficulty > 0) {
+            addStars(R.string.cache_difficulty, cache.difficulty);
+        }
+    }
+
     public void addTerrain(final Geocache cache) {
         if (cache.getTerrain() > 0) {
             addStars(R.string.cache_terrain, cache.getTerrain(), ConnectorFactory.getConnector(cache).getMaxTerrain());
+        }
+    }
+
+    public void addTerrain(final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (cache.terrain != null && cache.terrain > 0) {
+            addStars(R.string.cache_terrain, cache.terrain, ConnectorFactory.getConnector(cache.geocode).getMaxTerrain());
         }
     }
 
@@ -184,6 +256,20 @@ public final class CacheDetailsCreator {
         if (distance == null && cache.getDistance() != null) {
             distance = cache.getDistance();
         }
+        String text = "--";
+        if (distance != null) {
+            text = Units.getDistanceFromKilometers(distance);
+        } else if (cacheDistanceView != null) {
+            // if there is already a distance in cacheDistance, use it instead of resetting to default.
+            // this prevents displaying "--" while waiting for a new position update (See bug #1468)
+            text = cacheDistanceView.getText().toString();
+        }
+        return add(R.string.cache_distance, text).right;
+    }
+
+    public TextView addDistance(final cgeo.geocaching.persistence.entities.Geocache cache, final TextView cacheDistanceView) {
+        final Float distance = distanceNonBlocking(cache);
+
         String text = "--";
         if (distance != null) {
             text = Units.getDistanceFromKilometers(distance);
@@ -215,12 +301,29 @@ public final class CacheDetailsCreator {
         addHiddenDate(cache);
     }
 
+    public void addEventDate(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (!(cache.cacheType != null && cache.cacheType.isEvent())) {
+            return;
+        }
+        addHiddenDate(cache);
+    }
+
     public TextView addHiddenDate(@NonNull final Geocache cache) {
         final String dateString = Formatter.formatHiddenDate(cache);
         if (StringUtils.isEmpty(dateString)) {
             return null;
         }
         final TextView view = add(cache.isEventCache() ? R.string.cache_event : R.string.cache_hidden, dateString).right;
+        view.setId(R.id.date);
+        return view;
+    }
+
+    public TextView addHiddenDate(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        final String dateString = Formatter.formatHiddenDate(cache);
+        if (StringUtils.isEmpty(dateString)) {
+            return null;
+        }
+        final TextView view = add((cache.cacheType != null && cache.cacheType.isEvent()) ? R.string.cache_event : R.string.cache_hidden, dateString).right;
         view.setId(R.id.date);
         return view;
     }
