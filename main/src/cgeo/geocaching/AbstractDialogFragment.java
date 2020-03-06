@@ -347,6 +347,10 @@ public abstract class AbstractDialogFragment extends DialogFragment implements C
         }
     }
 
+    protected void init() {
+
+    }
+
 
     protected abstract TargetInfo getTargetInfo();
 

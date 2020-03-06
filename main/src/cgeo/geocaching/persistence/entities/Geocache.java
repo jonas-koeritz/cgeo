@@ -181,6 +181,10 @@ public class Geocache implements ICoordinates {
         public boolean premiumMembersOnly;
         public Date liveUpdated;
         public boolean userIsOwner;
+        public double difficulty;
+        public double terrain;
+        public int favoritePoints;
+        public boolean found;
 
         // TODO evaluate if more cache data can be updated from the live map
         // Create a new LiveCache object using the data from a legacy geocache object
@@ -195,6 +199,13 @@ public class Geocache implements ICoordinates {
             this.archived = cache.isArchived();
             this.premiumMembersOnly = cache.isPremiumMembersOnly();
             this.userIsOwner = cache.isOwner();
+            this.difficulty = cache.getDifficulty();
+            this.terrain = cache.getTerrain();
+            this.favoritePoints = cache.getFavoritePoints();
+            // Only update if marked as found as the map might not show the latest data
+            if (cache.isFound()) {
+                this.found = true;
+            }
         }
 
         public LiveCache(final cgeo.geocaching.models.Geocache cache, final Date liveUpdated) {

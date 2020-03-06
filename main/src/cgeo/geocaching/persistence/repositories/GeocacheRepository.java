@@ -218,21 +218,15 @@ public class GeocacheRepository {
     }
 
     private void loadPopupDetails(final String geocode) {
-        setDownloadStatus(geocode, DownloadStatus.Loading("Loading cache details"));
+        setDownloadStatus(geocode, DownloadStatus.Loading("Loading additional cache details"));
         try {
             final IConnector connector = ConnectorFactory.getConnector(geocode);
             if (connector instanceof GCConnector) {
-                final SearchResult result = GCMap.searchByGeocodes(Collections.singleton(geocode));
-                // TODO remove dependency on the cacheCache
-                for (cgeo.geocaching.models.Geocache cache : result.getCachesFromSearchResult(LoadFlags.LOAD_CACHE_ONLY)) {
-                    upsert(new Geocache.GeocodeResult(cache));
-                }
                 setDownloadStatus(geocode, DownloadStatus.Loading("Loading GCVote"));
                 final GCVoteRating rating = GCVote.getRating("", geocode);
                 if (rating != null) {
                     updateRating(geocode, rating.getRating(), rating.getVotes());
                 }
-
                 setDownloadStatus(geocode, DownloadStatus.Success("Finished loading cache details"));
             }
         } catch (Exception e) {
