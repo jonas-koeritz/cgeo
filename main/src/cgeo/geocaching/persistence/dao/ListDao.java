@@ -7,6 +7,9 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Transaction;
 
+import java.util.List;
+
+import cgeo.geocaching.persistence.entities.AssignedLists;
 import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.ListWithGeocaches;
 
@@ -21,4 +24,8 @@ public abstract class ListDao {
 
     @Query("DELETE FROM lists WHERE listId = :listId")
     public abstract void deleteList(long listId);
+
+    @Transaction
+    @Query("SELECT * FROM geocaches WHERE geocode = :geocode")
+    public abstract LiveData<AssignedLists> getAssignedLists(String geocode);
 }

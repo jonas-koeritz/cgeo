@@ -106,6 +106,12 @@ public class GCConnector extends AbstractConnector implements ISearchByGeocode, 
     }
 
     @Override
+    @NonNull
+    public String getCacheUrl(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return CACHE_URL_SHORT + cache.geocode;
+    }
+
+    @Override
     public boolean canAddPersonalNote(@NonNull final Geocache cache) {
         return Settings.isGCPremiumMember();
     }

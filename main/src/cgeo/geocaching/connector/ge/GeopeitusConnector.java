@@ -29,6 +29,12 @@ public class GeopeitusConnector extends AbstractConnector {
 
     @Override
     @NonNull
+    public String getCacheUrl(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return getCacheUrlPrefix() + StringUtils.stripStart(cache.geocode.substring(2), "0");
+    }
+
+    @Override
+    @NonNull
     public String getHost() {
         return "www.geopeitus.ee";
     }

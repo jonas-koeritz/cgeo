@@ -129,6 +129,12 @@ public class SuConnector extends AbstractConnector implements ISearchByCenter, I
     }
 
     @Override
+    @NonNull
+    public String getCacheUrl(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return getCacheUrlPrefix() + "&cid=" + cache.geocode;
+    }
+
+    @Override
     public boolean getHttps() {
         return true;
     }

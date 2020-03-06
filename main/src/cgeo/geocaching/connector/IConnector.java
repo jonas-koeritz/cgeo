@@ -45,6 +45,9 @@ public interface IConnector {
     @Nullable
     String getCacheUrl(@NonNull Geocache cache);
 
+    @Nullable
+    String getCacheUrl(@NonNull cgeo.geocaching.persistence.entities.Geocache cache);
+
     /**
      * get long browser URL for the given cache
      *

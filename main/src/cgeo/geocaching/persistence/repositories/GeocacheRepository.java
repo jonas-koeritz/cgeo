@@ -236,6 +236,7 @@ public class GeocacheRepository {
 
     private void loadFullDetails(final String geocode) {
         setDownloadStatus(geocode, DownloadStatus.Loading(String.format("Loading full cache details for geocache %s", geocode)));
+        // TODO implement full details download
     }
 
     public LiveData<List<Geocache>> getCachesByGeocode(final List<String> geocodes) {

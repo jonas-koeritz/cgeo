@@ -31,6 +31,12 @@ public class TerraCachingConnector extends AbstractConnector {
     }
 
     @Override
+    @Nullable
+    public String getCacheUrl(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return getCacheUrlPrefix() + cache.geocode;
+    }
+
+    @Override
     @NonNull
     public String getHost() {
         return "www.terracaching.com/";

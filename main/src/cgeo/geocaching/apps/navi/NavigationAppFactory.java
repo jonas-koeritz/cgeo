@@ -184,6 +184,51 @@ public final class NavigationAppFactory {
         alert.show();
     }
 
+    public static void showNavigationMenu(final Activity activity,
+                                          final cgeo.geocaching.persistence.entities.Geocache cache, final Waypoint waypoint, final Geopoint destination,
+                                          final boolean showInternalMap, final boolean showDefaultNavigation) {
+        final List<NavigationAppsEnum> items = new ArrayList<>();
+        final int defaultNavigationTool = Settings.getDefaultNavigationTool();
+        for (final NavigationAppsEnum navApp : getActiveNavigationApps()) {
+            if ((showInternalMap || !(navApp.app instanceof InternalMap)) &&
+                    (showDefaultNavigation || defaultNavigationTool != navApp.id)) {
+                boolean add = false;
+                if (cache != null && navApp.app instanceof CacheNavigationApp && cache.getCoords() != null) {
+                    add = true;
+                }
+                if (waypoint != null && navApp.app instanceof WaypointNavigationApp && ((WaypointNavigationApp) navApp.app).isEnabled(waypoint)) {
+                    add = true;
+                }
+                if (destination != null && navApp.app instanceof GeopointNavigationApp) {
+                    add = true;
+                }
+                if (add) {
+                    items.add(navApp);
+                }
+            }
+        }
+
+        if (items.size() == 1) {
+            invokeNavigation(activity, cache, waypoint, destination, items.get(0).app);
+            return;
+        }
+
+        /*
+         * Using an ArrayAdapter with list of NavigationAppsEnum items avoids
+         * handling between mapping list positions allows us to do dynamic filtering of the list based on use case.
+         */
+        final ArrayAdapter<NavigationAppsEnum> adapter = new ArrayAdapter<>(activity, android.R.layout.select_dialog_item, items);
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle(R.string.cache_menu_navigate);
+        builder.setAdapter(adapter, (dialog, item) -> {
+            final NavigationAppsEnum selectedItem = adapter.getItem(item);
+            invokeNavigation(activity, cache, waypoint, destination, selectedItem.app);
+        });
+        final AlertDialog alert = builder.create();
+        alert.show();
+    }
+
     /**
      * Returns all installed navigation apps.
      *
@@ -350,6 +395,18 @@ public final class NavigationAppFactory {
     private static void invokeNavigation(final Activity activity, final Geocache cache, final Waypoint waypoint, final Geopoint destination, final App app) {
         if (cache != null) {
             navigateCache(activity, cache, app);
+        } else if (waypoint != null) {
+            navigateWaypoint(activity, waypoint, app);
+        } else {
+            navigateGeopoint(activity, destination, app);
+        }
+    }
+
+    private static void invokeNavigation(final Activity activity, final cgeo.geocaching.persistence.entities.Geocache cache, final Waypoint waypoint, final Geopoint destination, final App app) {
+        if (cache != null) {
+            navigateGeopoint(activity, cache.getCoords(), app);
+            // TODO use navigateCache to gain additional features
+            // navigateCache(activity, cache, app);
         } else if (waypoint != null) {
             navigateWaypoint(activity, waypoint, app);
         } else {

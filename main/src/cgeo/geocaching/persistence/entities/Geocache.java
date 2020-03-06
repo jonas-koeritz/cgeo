@@ -218,6 +218,10 @@ public class Geocache implements ICoordinates {
 
     }
 
+    public String getListingUrl() {
+        return ConnectorFactory.getConnector(geocode).getCacheUrl(this);
+    }
+
     /**
      * Creates a Geocache Entity based on the given legacy cache object
      * @param cache legacy cache object to copy

@@ -86,6 +86,12 @@ public class InternalConnector extends AbstractConnector implements ISearchByGeo
     }
 
     @Override
+    @Nullable
+    public String getCacheUrl(@NonNull final cgeo.geocaching.persistence.entities.Geocache cache) {
+        return null;
+    }
+
+    @Override
     @NonNull
     public String getHost() {
         return StringUtils.EMPTY; // we have no host for these caches

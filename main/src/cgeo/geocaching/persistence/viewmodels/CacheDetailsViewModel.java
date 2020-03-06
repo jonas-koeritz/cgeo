@@ -5,17 +5,24 @@ import android.app.Application;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
+import java.util.List;
+
+import cgeo.geocaching.persistence.entities.AssignedLists;
+import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.entities.Geocache;
 import cgeo.geocaching.persistence.repositories.GeocacheRepository;
+import cgeo.geocaching.persistence.repositories.ListRepository;
 import cgeo.geocaching.persistence.util.DownloadStatus;
 
 public class CacheDetailsViewModel extends AndroidViewModel {
     private GeocacheRepository geocacheRepository;
+    private ListRepository listRepository;
 
     public CacheDetailsViewModel(final Application application) {
         super(application);
 
         geocacheRepository = new GeocacheRepository(application);
+        listRepository = new ListRepository(application);
     }
 
     public LiveData<Geocache> getGeocacheByGeocode(final String geocode) {
@@ -28,5 +35,9 @@ public class CacheDetailsViewModel extends AndroidViewModel {
 
     public LiveData<DownloadStatus> getDownloadStatus(final String geocode) {
         return geocacheRepository.getDownloadStatus(geocode);
+    }
+
+    public LiveData<List<CacheList>> getLists(final String geocode) {
+        return listRepository.getAssignedLists(geocode);
     }
 }

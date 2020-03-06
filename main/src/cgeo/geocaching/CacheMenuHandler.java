@@ -108,6 +108,34 @@ public final class CacheMenuHandler extends AbstractUIFactory {
 
     }
 
+    public static void onPrepareOptionsMenu(final Menu menu, final cgeo.geocaching.persistence.entities.Geocache cache) {
+        if (cache == null) {
+            return;
+        }
+        final boolean hasCoords = cache.getCoords() != null;
+        menu.findItem(R.id.menu_default_navigation).setVisible(hasCoords);
+        menu.findItem(R.id.menu_navigate).setVisible(hasCoords);
+        menu.findItem(R.id.menu_delete).setVisible(false);
+        // TODO reactivate this if possible
+        menu.findItem(R.id.menu_caches_around).setVisible(false);
+        // TODO reactivate
+        menu.findItem(R.id.menu_calendar).setVisible(false);
+        // TODO reactivate
+        // menu.findItem(R.id.menu_log_visit).setVisible(cache.supportsLogging() && !Settings.getLogOffline());
+        // menu.findItem(R.id.menu_log_visit_offline).setVisible(cache.supportsLogging() && Settings.getLogOffline());
+
+        menu.findItem(R.id.menu_default_navigation).setTitle(NavigationAppFactory.getDefaultNavigationApplication().getName());
+
+        final MenuItem shareItem = menu.findItem(R.id.menu_share);
+        final ShareActionProvider shareActionProvider = (ShareActionProvider)
+                MenuItemCompat.getActionProvider(shareItem);
+        if (shareActionProvider != null) {
+            // TODO reactivate
+            // shareActionProvider.setShareIntent(cache.getShareIntent());
+        }
+
+    }
+
     public static void addMenuItems(final MenuInflater inflater, final Menu menu, final Geocache cache) {
         inflater.inflate(R.menu.cache_options, menu);
         onPrepareOptionsMenu(menu, cache);

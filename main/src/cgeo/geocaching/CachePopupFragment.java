@@ -6,6 +6,7 @@ import cgeo.geocaching.compatibility.Compatibility;
 import cgeo.geocaching.list.StoredList;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.network.Network;
+import cgeo.geocaching.persistence.entities.CacheList;
 import cgeo.geocaching.persistence.repositories.GeocacheRepository;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.speech.SpeechService;
@@ -18,8 +19,13 @@ import cgeo.geocaching.utils.Log;
 import cgeo.geocaching.utils.TextUtils;
 
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Message;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,6 +39,7 @@ import androidx.lifecycle.LiveData;
 
 import java.lang.ref.WeakReference;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import io.reactivex.schedulers.Schedulers;
@@ -61,8 +68,34 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
                             progress.dismiss();
                     }
                 });
+
+                cacheDetailsViewModel.getLists(getArguments().getString(GEOCODE_ARG)).observe(this, this::updateCacheLists);
             }
         }
+    }
+
+    private void updateCacheLists(final List<CacheList> lists) {
+        final View view = getView();
+        final SpannableStringBuilder builder = new SpannableStringBuilder();
+        for (final CacheList list : lists) {
+            if (builder.length() > 0) {
+                builder.append(", ");
+            }
+            final int start = builder.length();
+            builder.append(list.name);
+            builder.setSpan(new ClickableSpan() {
+                @Override
+                public void onClick(final View widget) {
+                    Settings.setLastDisplayedList((int) list.listId);
+                    CacheListActivity.startActivityOffline(view.getContext());
+                }
+            }, start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        builder.insert(0, res.getString(R.string.list_list_headline) + " ");
+        final TextView offlineLists = view.findViewById(R.id.offline_lists);
+        offlineLists.setText(builder);
+        offlineLists.setMovementMethod(LinkMovementMethod.getInstance());
     }
 
     private void updateCacheData(final cgeo.geocaching.persistence.entities.Geocache cache) {
@@ -289,12 +322,14 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
 
     @Override
     public void navigateTo() {
-        NavigationAppFactory.startDefaultNavigationApplication(1, getActivity(), cache);
+        if (geocache.getValue() != null) {
+            NavigationAppFactory.startDefaultNavigationApplication(1, getActivity(), geocache.getValue().getCoords());
+        }
     }
 
     @Override
     public void showNavigationMenu() {
-        NavigationAppFactory.showNavigationMenu(getActivity(), cache, null, null, true, true);
+        NavigationAppFactory.showNavigationMenu(getActivity(), geocache.getValue(), null, null, true, true);
     }
 
 
@@ -303,11 +338,12 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
      */
     @Override
     protected void startDefaultNavigation2() {
-        if (cache == null || cache.getCoords() == null) {
+        if (geocache.getValue() == null || geocache.getValue().getCoords() == null) {
             showToast(res.getString(R.string.cache_coordinates_no));
             return;
         }
-        NavigationAppFactory.startDefaultNavigationApplication(2, getActivity(), cache);
+        // TODO use CacheNavigationApp (supporting parking Waypoints etc)
+        NavigationAppFactory.startDefaultNavigationApplication(2, getActivity(), geocache.getValue().getCoords());
         getActivity().finish();
     }
 
@@ -318,6 +354,4 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
         }
         return new TargetInfo(cache.getCoords(), cache.getGeocode());
     }
-
-
 }
