@@ -137,7 +137,6 @@ public abstract class AbstractCachesOverlay {
         final Collection<String> newCodes = new HashSet<>();
         if (!cachesToDisplay.isEmpty()) {
             final boolean isDotMode = Settings.isDotMode();
-            Log.d(String.format(Locale.ENGLISH, "Cache Entities to display: %d", cachesToDisplay.size()));
             for (final cgeo.geocaching.persistence.entities.Geocache c : cachesToDisplay) {
                 if (c == null) {
                     continue;

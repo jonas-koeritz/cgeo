@@ -9,6 +9,7 @@ import cgeo.geocaching.utils.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
+import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
@@ -106,6 +107,9 @@ public abstract class GeocacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     public abstract void insertGeocacheListCrossRef(GeocacheListCrossRef crossRef);
+
+    @Query("DELETE from cache_list where geocode = :geocode")
+    public abstract void clearLists(String geocode);
 
     @Query("SELECT * FROM geocaches WHERE latitude >= :minLat AND latitude <= :maxLat AND longitude >= :minLon AND longitude <= :maxLon LIMIT 500")
     public abstract LiveData<List<Geocache>> getGeocachesInRectangle(double minLat, double minLon, double maxLat, double maxLon);

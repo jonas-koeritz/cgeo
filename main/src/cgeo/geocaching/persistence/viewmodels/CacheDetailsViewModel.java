@@ -40,4 +40,15 @@ public class CacheDetailsViewModel extends AndroidViewModel {
     public LiveData<List<CacheList>> getLists(final String geocode) {
         return listRepository.getAssignedLists(geocode);
     }
+
+    public void addGeocacheToList(final String geocode, final long listId) {
+        geocacheRepository.addGeocacheToList(geocode, listId);
+    }
+
+    public void setListsForGeocache(final String geocode, final List<Long> lists) {
+        geocacheRepository.clearLists(geocode);
+        for (Long listId : lists) {
+            geocacheRepository.addGeocacheToList(geocode, listId);
+        }
+    }
 }

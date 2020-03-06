@@ -196,7 +196,11 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
                 new DropCacheClickListener().onClick(getView());
                 return true;
             case R.id.menu_tts_toggle:
-                SpeechService.toggleService(getActivity(), cache.getCoords());
+                if (geocache.getValue() != null) {
+                    SpeechService.toggleService(getActivity(), geocache.getValue().getCoords());
+                } else {
+                    // TODO handle error, inform user
+                }
                 return true;
         }
         return false;
@@ -236,6 +240,7 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
         }
 
         private void storeCacheOnLists(final Set<Integer> listIds) {
+
             if (cache.isOffline()) {
                 // cache already offline, just add to another list
                 DataStore.saveLists(Collections.singletonList(cache), listIds);
@@ -349,9 +354,9 @@ public class CachePopupFragment extends AbstractDialogFragmentWithProximityNotif
 
     @Override
     protected TargetInfo getTargetInfo() {
-        if (cache == null) {
+        if (geocache.getValue() == null) {
             return null;
         }
-        return new TargetInfo(cache.getCoords(), cache.getGeocode());
+        return new TargetInfo(geocache.getValue().getCoords(), geocache.getValue().geocode);
     }
 }

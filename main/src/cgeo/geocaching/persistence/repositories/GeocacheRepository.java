@@ -1,12 +1,8 @@
 package cgeo.geocaching.persistence.repositories;
 
-import cgeo.geocaching.SearchResult;
 import cgeo.geocaching.connector.ConnectorFactory;
 import cgeo.geocaching.connector.IConnector;
 import cgeo.geocaching.connector.gc.GCConnector;
-import cgeo.geocaching.connector.gc.GCMap;
-import cgeo.geocaching.enumerations.CacheType;
-import cgeo.geocaching.enumerations.LoadFlags;
 import cgeo.geocaching.gcvote.GCVote;
 import cgeo.geocaching.gcvote.GCVoteRating;
 import cgeo.geocaching.location.Viewport;
@@ -25,13 +21,9 @@ import android.os.Handler;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import org.apache.commons.lang3.BooleanUtils;
-
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -117,6 +109,12 @@ public class GeocacheRepository {
             } catch (Exception e) {
                 Log.d("Error trying to add cache to list", e);
             }
+        });
+    }
+
+    public void clearLists(final String geocode) {
+        CGeoDatabase.databaseWriteExecutor.execute(() -> {
+            geocacheDao.clearLists(geocode);
         });
     }
 
