@@ -24,7 +24,6 @@ public abstract class GeocacheDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract long insert(Geocache geocache);
 
-
     @Update(onConflict = OnConflictStrategy.IGNORE)
     abstract void update(Geocache entity);
 
